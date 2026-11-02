@@ -1,0 +1,8 @@
+{
+  "name": "thanksgiving-wimmelbild",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/motion.test.mjs"
+  }
+}

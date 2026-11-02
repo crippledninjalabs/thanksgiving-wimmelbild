@@ -1,0 +1,374 @@
+{
+ "_doc": "All coordinates are in BASE units = pixels of the 1280x720 layout (multiply by 6 for 8K, 3 for 4K). Times in seconds, loop = 30 s. Phases repeat every 30 s so frame 900 == frame 0.",
+ "fps": 30,
+ "duration": 30,
+ "background": {
+  "8k": "../01b-background-8k/background-8k.png",
+  "4k": "../01b-background-8k/background-4k.png",
+  "1280": "../01b-background-8k/background-1280.png"
+ },
+ "roads": {
+  "dropoff_route": [
+   [
+    -90,
+    482
+   ],
+   [
+    0,
+    510
+   ],
+   [
+    60,
+    531
+   ],
+   [
+    95,
+    543
+   ],
+   [
+    140,
+    555
+   ],
+   [
+    190,
+    575
+   ],
+   [
+    240,
+    604
+   ],
+   [
+    300,
+    634
+   ],
+   [
+    360,
+    656
+   ],
+   [
+    420,
+    670
+   ],
+   [
+    480,
+    681
+   ],
+   [
+    540,
+    690
+   ],
+   [
+    600,
+    697
+   ],
+   [
+    660,
+    700
+   ],
+   [
+    720,
+    702
+   ],
+   [
+    780,
+    702
+   ],
+   [
+    840,
+    700
+   ],
+   [
+    900,
+    694
+   ],
+   [
+    960,
+    680
+   ],
+   [
+    1020,
+    663
+   ],
+   [
+    1080,
+    642
+   ],
+   [
+    1140,
+    618
+   ],
+   [
+    1200,
+    592
+   ],
+   [
+    1240,
+    572
+   ],
+   [
+    1280,
+    556
+   ],
+   [
+    1370,
+    518
+   ]
+  ],
+  "through_route": [
+   [
+    -90,
+    531
+   ],
+   [
+    0,
+    559
+   ],
+   [
+    60,
+    577
+   ],
+   [
+    100,
+    592
+   ],
+   [
+    140,
+    604
+   ],
+   [
+    180,
+    612
+   ],
+   [
+    220,
+    624
+   ],
+   [
+    260,
+    630
+   ],
+   [
+    300,
+    640
+   ],
+   [
+    360,
+    656
+   ],
+   [
+    420,
+    670
+   ],
+   [
+    480,
+    681
+   ],
+   [
+    540,
+    690
+   ],
+   [
+    600,
+    697
+   ],
+   [
+    660,
+    700
+   ],
+   [
+    720,
+    702
+   ],
+   [
+    780,
+    702
+   ],
+   [
+    840,
+    700
+   ],
+   [
+    900,
+    694
+   ],
+   [
+    960,
+    680
+   ],
+   [
+    1020,
+    663
+   ],
+   [
+    1080,
+    642
+   ],
+   [
+    1140,
+    618
+   ],
+   [
+    1200,
+    592
+   ],
+   [
+    1240,
+    572
+   ],
+   [
+    1280,
+    556
+   ],
+   [
+    1370,
+    518
+   ]
+  ]
+ },
+ "cab": {
+  "length_base": 60,
+  "anchor_y": 0.72,
+  "sprites": {
+   "DR": "../../layers/cybercabs/cab_closed_DR.png",
+   "DR_open": "../../layers/cybercabs/cab_door_open_DR.png",
+   "UR": "../../layers/cybercabs/cab_closed_UR.png"
+  },
+  "heading_deg": {
+   "DR": 18,
+   "UR": -28
+  },
+  "rotation_damping": 0.5
+ },
+ "cabs": [
+  {
+   "name": "A_dropoff",
+   "route": "dropoff_route",
+   "phase": 0.0,
+   "segments": [
+    {
+     "t0": 0.0,
+     "t1": 3.0,
+     "s0": "start",
+     "s1": {
+      "x": 95
+     },
+     "ease": "out"
+    },
+    {
+     "t0": 3.0,
+     "t1": 7.0,
+     "hold": true,
+     "door_open": [
+      3.5,
+      6.5
+     ]
+    },
+    {
+     "t0": 7.0,
+     "t1": 17.0,
+     "s0": {
+      "x": 95
+     },
+     "s1": "end",
+     "ease": "in"
+    }
+   ]
+  },
+  {
+   "name": "B_through",
+   "route": "through_route",
+   "phase": 3.5,
+   "segments": [
+    {
+     "t0": 0.0,
+     "t1": 11.0,
+     "s0": "start",
+     "s1": "end",
+     "ease": "linear"
+    }
+   ]
+  },
+  {
+   "name": "C_dropoff (identical to A, +15 s)",
+   "copy_of": "A_dropoff",
+   "phase": 15.0
+  },
+  {
+   "name": "D_through (identical to B, +15 s)",
+   "copy_of": "B_through",
+   "phase": 18.5
+  }
+ ],
+ "elon": {
+  "height_base": 28,
+  "sprites_dir": "../../layers/elon",
+  "walk_fps": 8,
+  "bob_frac": 0.02,
+  "work_fps": 2.5,
+  "timeline": [
+   {
+    "t0": 0.0,
+    "t1": 6.0,
+    "mode": "work",
+    "at": [
+     486,
+     433
+    ],
+    "facing": "R"
+   },
+   {
+    "t0": 6.0,
+    "t1": 29.6,
+    "mode": "walk",
+    "waypoints": [
+     [
+      486,
+      433
+     ],
+     [
+      515,
+      470
+     ],
+     [
+      480,
+      540
+     ],
+     [
+      415,
+      572
+     ],
+     [
+      480,
+      540
+     ],
+     [
+      532,
+      440
+     ],
+     [
+      530,
+      405
+     ],
+     [
+      445,
+      382
+     ],
+     [
+      486,
+      433
+     ]
+    ]
+   },
+   {
+    "t0": 29.6,
+    "t1": 30.0,
+    "mode": "stand",
+    "at": [
+     486,
+     433
+    ],
+    "facing": "R"
+   }
+  ]
+ }
+}

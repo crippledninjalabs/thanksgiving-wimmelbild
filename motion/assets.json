@@ -1,0 +1,13 @@
+{
+  "preview": "assets/background-4k.jpg",
+  "full": "assets/background-8k.jpg",
+  "tiles": "assets/tiles/manifest.json",
+  "cabSprites": {
+    "DR": "assets/sprites/cybercabs/cab_closed_DR.png",
+    "DR_open": "assets/sprites/cybercabs/cab_door_open_DR.png",
+    "UR": "assets/sprites/cybercabs/cab_closed_UR.png"
+  },
+  "characters": {
+    "elon": "assets/sprites/elon"
+  }
+}
