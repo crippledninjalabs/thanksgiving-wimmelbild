@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Thanksgiving at SpaceX</title>
+  <meta name="description" content="A zoomable, animated hidden-object scene. Pinch or scroll to explore Thanksgiving at SpaceX.">
+  <link rel="canonical" href="https://crippledninjalabs.github.io/thanksgiving-wimmelbild/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Thanksgiving at SpaceX">
+  <meta property="og:description" content="A zoomable, animated hidden-object scene. Pinch or scroll to explore Thanksgiving at SpaceX.">
+  <meta property="og:url" content="https://crippledninjalabs.github.io/thanksgiving-wimmelbild/">
+  <meta property="og:image" content="https://crippledninjalabs.github.io/thanksgiving-wimmelbild/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="675">
+  <meta property="og:image:alt" content="Painted overhead view of a Thanksgiving gathering at a SpaceX site.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Thanksgiving at SpaceX">
+  <meta name="twitter:description" content="A zoomable, animated hidden-object scene. Pinch or scroll to explore Thanksgiving at SpaceX.">
+  <meta name="twitter:image" content="https://crippledninjalabs.github.io/thanksgiving-wimmelbild/share.jpg">
+  <meta name="twitter:image:alt" content="Painted overhead view of a Thanksgiving gathering at a SpaceX site.">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="css/viewer.css">
+</head>
+<body>
+  <canvas id="view" aria-label="Thanksgiving at SpaceX, animated scene. Drag to pan. Pinch or scroll to zoom."></canvas>
+  <div class="hud">
+    <h1>Thanksgiving at SpaceX</h1>
+    <p id="hint">Pinch or scroll to zoom</p>
+    <p id="loading">Loading scene…</p>
+    <p id="error" hidden></p>
+    <div class="controls">
+      <button type="button" id="play" aria-label="Pause">
+        <svg class="icon-pause" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/>
+        </svg>
+        <svg class="icon-play" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M8 5v14l12-7z"/>
+        </svg>
+      </button>
+      <button type="button" id="reset" aria-label="Reset view">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <noscript><p class="noscript">This viewer needs JavaScript to animate and zoom the scene.</p></noscript>
+  <script type="module" src="js/viewer.js"></script>
+</body>
+</html>
