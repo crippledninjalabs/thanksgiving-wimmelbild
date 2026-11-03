@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thanksgiving at SpaceX — control room look test</title>
+<style>
+  html, body { margin: 0; background: #12162c; height: 100%; }
+  canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<script>
+'use strict';
+/* Thanksgiving at SpaceX — one still frame.
+   Internal 640×360, nearest-neighbor ×3 to 1920×1080.
+   Seed is fixed. Every object is painted in ramps, not flat fills. */
+
+const W = 640, H = 360, SCALE = 3, SEED = 20261103;
+
+const C = {};
+const RGB = [];
+function add(name, hex) {
+  C[name] = RGB.length;
+  RGB.push([
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ]);
+}
+
+add('ink',  '#100e0c');
+add('sky0', '#10142a');
+add('sky1', '#181e40');
+add('sky2', '#222652');
+add('sky3', '#322850');
+add('sky4', '#4a3054');
+add('sky5', '#6a384c');
+add('sky6', '#a45648');
+add('sky7', '#e08458');
+add('sky8', '#f0b070');
+add('st0',  '#141a22');
+add('st1',  '#263140');
+add('st2',  '#3e4e62');
+add('st3',  '#6d7f93');
+add('st4',  '#a9bacb');
+add('st5',  '#e4eef6');
+add('sc0',  '#071416');
+add('sc1',  '#0e3238');
+add('sc2',  '#14686e');
+add('sc3',  '#2ec4bc');
+add('sc4',  '#dffaf4');
+add('cr0',  '#4a1420');
+add('cr1',  '#8e2434');
+add('cr2',  '#d25060');
+add('cr3',  '#f4a8a8');
+add('pu0',  '#6a3010');
+add('pu1',  '#c46218');
+add('pu2',  '#ee9440');
+add('pu3',  '#f8d098');
+add('go0',  '#6a5014');
+add('go1',  '#b08c28');
+add('go2',  '#e8c860');
+add('go3',  '#fff0b4');
+add('wd0',  '#2a1810');
+add('wd1',  '#4a301c');
+add('wd2',  '#7a5030');
+add('wd3',  '#b07848');
+add('wd4',  '#e0b080');
+add('cm0',  '#c8b498');
+add('cm1',  '#e6d6bc');
+add('cm2',  '#fbf4e6');
+add('sk0',  '#8a5040');
+add('sk1',  '#c48460');
+add('sk2',  '#e0a888');
+add('sk3',  '#f4c8a4');
+add('sk4',  '#ffe6d0');
+add('hr0',  '#0c0a08');
+add('hr1',  '#221810');
+add('hr2',  '#3c2e24');
+add('sh0',  '#0c0c10');
+add('sh1',  '#1c1c24');
+add('sh2',  '#34343e');
+add('sh3',  '#56566a');
+add('jn0',  '#152033');
+add('jn1',  '#243656');
+add('jn2',  '#3d5e86');
+add('jn3',  '#7a9cc0');
+add('iris', '#3c7eae');
+add('irisD','#1c4468');
+add('pupil','#12141c');
+add('white','#f8f6f2');
+add('lip',  '#c46a64');
+add('lipH', '#e8a098');
+add('cn0',  '#2e2a26');
+add('cn1',  '#524c44');
+add('cn2',  '#7a7268');
+
+const buf = new Uint8Array(W * H);
+
+let clip = null;
+function px(x, y, c) {
+  x |= 0; y |= 0;
+  if (x < 0 || y < 0 || x >= W || y >= H) return;
+  if (clip && (x < clip.x || y < clip.y || x >= clip.x + clip.w || y >= clip.y + clip.h)) return;
+  buf[y * W + x] = c;
+}
+function hline(x, y, w, c) {
+  for (let i = 0; i < w; i++) px(x + i, y, c);
+}
+function vline(x, y, h, c) {
+  for (let i = 0; i < h; i++) px(x, y + i, c);
+}
+function fill(x, y, w, h, c) {
+  for (let yy = 0; yy < h; yy++) hline(x, y + yy, w, c);
+}
+function rect3(x, y, w, h, hi, mid, lo) {
+  for (let yy = 0; yy < h; yy++) {
+    for (let xx = 0; xx < w; xx++) {
+      let c = mid;
+      if (yy === h - 1 || xx === w - 1) c = lo;
+      else if (yy === 0 || xx === 0) c = hi;
+      px(x + xx, y + yy, c);
+    }
+  }
+}
+function line(x0, y0, x1, y1, c) {
+  x0 |= 0; y0 |= 0; x1 |= 0; y1 |= 0;
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  for (;;) {
+    px(x0, y0, c);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = err << 1;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+function cable(x0, y0, x1, y1, droop, col, hi) {
+  const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  let prevX = -999, prevY = -999;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = Math.round(x0 + (x1 - x0) * t);
+    const y = Math.round(y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * droop);
+    if (x === prevX && y === prevY) continue;
+    px(x, y + 1, C.ink);
+    px(x, y, (i % 6 === 0) ? hi : col);
+    prevX = x;
+    prevY = y;
+  }
+}
+function disk(cx, cy, r, c) {
+  const r2 = r * r;
+  for (let y = -r; y <= r; y++) {
+    for (let x = -r; x <= r; x++) {
+      if (x * x + y * y <= r2) px(cx + x, cy + y, c);
+    }
+  }
+}
+
+const BAYER = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+];
+
+function mulberry32(a) {
+  return function () {
+    a |= 0;
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------- layout ---------- */
+const FLOOR = 258;
+const SILL = 210;
+const CEIL = 74;
+const IN_L = 198;
+const IN_R = 586;
+const WALL_L = 172;
+const EAVE = 152;
+const HX = 360;
+const HY = 182;
+
+const CROP = { x: 152, y: 24, w: 488, h: 286 };
+
+/* ---------- sky ---------- */
+const SKY_STOPS = [
+  [0, C.sky0], [34, C.sky1], [72, C.sky2], [112, C.sky3],
+  [156, C.sky4], [198, C.sky5], [230, C.sky6], [258, C.sky7], [340, C.sky8],
+];
+
+function skyAt(x, y) {
+  let i = 0;
+  const last = SKY_STOPS.length - 2;
+  while (i < last && y >= SKY_STOPS[i + 1][0]) i++;
+  const y0 = SKY_STOPS[i][0], c0 = SKY_STOPS[i][1];
+  const y1 = SKY_STOPS[i + 1][0], c1 = SKY_STOPS[i + 1][1];
+  let f = (y - y0) / (y1 - y0);
+  if (x < 170 && y > 150) {
+    f += ((170 - x) / 170) * 0.22 * Math.min(1, (y - 150) / 120);
+  }
+  if (f < 0) f = 0;
+  if (f > 1) f = 1;
+  const b = BAYER[y & 3][x & 3];
+  return (f * 16 > b) ? c1 : c0;
+}
+
+function drawSky() {
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) px(x, y, skyAt(x, y));
+  }
+}
+
+function drawStars() {
+  const hero = [
+    [18, 10], [46, 22], [78, 8], [104, 28], [136, 14],
+    [210, 8], [268, 16], [330, 6], [410, 12], [490, 8],
+    [560, 14], [610, 6], [24, 48], [88, 44],
+  ];
+  for (let i = 0; i < hero.length; i++) {
+    const x = hero[i][0], y = hero[i][1];
+    const c = (i % 3 === 0) ? C.go3 : C.cm2;
+    px(x, y, c);
+    if (i % 2 === 0) {
+      px(x - 1, y, C.cm1);
+      px(x + 1, y, C.cm1);
+      px(x, y - 1, C.cm1);
+      px(x, y + 1, C.cm1);
+    }
+  }
+  const rnd = mulberry32(SEED);
+  for (let n = 0; n < 42; n++) {
+    const x = (rnd() * W) | 0;
+    const y = (rnd() * 168) | 0;
+    if (y > 30 && x > EAVE) continue;
+    const roll = rnd();
+    px(x, y, roll > 0.82 ? C.go3 : roll > 0.5 ? C.cm2 : C.st4);
+  }
+}
+
+function drawMoon(cx, cy) {
+  const r = 12;
+  for (let y = -r - 1; y <= r + 1; y++) {
+    for (let x = -r - 1; x <= r + 1; x++) {
+      const d2 = x * x + y * y;
+      if (d2 > (r + 0.35) * (r + 0.35)) continue;
+      const edge = d2 > (r - 1.2) * (r - 1.2);
+      const light = -x * 0.62 - y * 0.28;
+      let c = C.go2;
+      if (light > 5) c = C.go3;
+      else if (light > 1.2) c = C.cm1;
+      else if (light > -3) c = C.cm0;
+      else c = C.go0;
+      if (edge && light >= 0) c = C.go3;
+      if (edge && light < 0) c = C.go0;
+      px(cx + x, cy + y, c);
+    }
+  }
+  crater(cx - 4, cy + 3, 3);
+  crater(cx + 3, cy - 1, 2);
+  crater(cx + 1, cy + 6, 1);
+  crater(cx - 1, cy - 5, 1);
+}
+
+function crater(cx, cy, r) {
+  for (let y = -r; y <= r; y++) {
+    for (let x = -r; x <= r; x++) {
+      const d2 = x * x + y * y;
+      if (d2 > r * r + r) continue;
+      if (d2 >= (r - 1) * (r - 1)) px(cx + x, cy + y, C.go0);
+      else px(cx + x, cy + y, x < 0 && y <= 0 ? C.cm0 : C.go1);
+    }
+  }
+}
+
+function drawSatellite(x, y) {
+  rect3(x - 18, y - 3, 14, 7, C.st4, C.st2, C.st0);
+  for (let i = 0; i < 14; i += 3) vline(x - 18 + i, y - 2, 5, C.st0);
+  hline(x - 17, y, 12, C.st1);
+  rect3(x + 6, y - 2, 10, 5, C.st4, C.st2, C.st0);
+  for (let i = 0; i < 10; i += 3) vline(x + 6 + i, y - 1, 3, C.st0);
+  rect3(x - 3, y - 5, 8, 11, C.st5, C.st3, C.st0);
+  px(x - 1, y - 3, C.go2);
+  px(x, y - 3, C.go3);
+  px(x + 2, y - 1, C.st5);
+  px(x + 5, y - 6, C.st4);
+  px(x + 6, y - 7, C.st5);
+  px(x + 6, y - 5, C.st2);
+  px(x + 4, y + 4, C.cr2);
+  px(x + 4, y + 5, C.cr1);
+  vline(x, y + 6, 4, C.st3);
+}
+
+/* ---------- distant pad ---------- */
+function hillY(x) {
+  let y = 236;
+  y += Math.round(Math.sin(x * 0.031) * 5 + Math.sin(x * 0.012 + 0.7) * 3);
+  y += ((x * 3) % 5 === 0) ? 1 : 0;
+  return y;
+}
+
+function drawTerrain() {
+  for (let x = 0; x < WALL_L + 8; x++) {
+    const top = hillY(x);
+    for (let y = top; y < H; y++) {
+      let c = C.wd0;
+      if (y < top + 3) c = C.wd1;
+      else if (y > 300) c = ((x + y) % 17 === 0) ? C.cn1 : C.ink;
+      else if (((x * 5 + y * 3) % 23) === 0) c = C.wd1;
+      px(x, y, c);
+    }
+    if (x % 11 === 3) {
+      px(x, top - 1, C.wd2);
+      px(x, top - 2, C.pu0);
+      px(x + 1, top - 1, C.wd1);
+    }
+  }
+  const padL = 18, padR = 96, padY = hillY(40) - 1;
+  for (let y = padY; y < padY + 8; y++) {
+    for (let x = padL; x < padR; x++) {
+      let c = C.cn1;
+      if (y === padY) c = C.cn2;
+      else if (y === padY + 7) c = C.cn0;
+      else if ((x + y * 2) % 9 === 0) c = C.cn2;
+      else if ((x * 3 + y) % 13 === 0) c = C.cn0;
+      px(x, y, c);
+    }
+  }
+  for (let x = padL + 4; x < padR - 4; x += 4) px(x, padY, C.go2);
+  fill(padL + 30, padY + 2, 18, 2, C.st0);
+  hline(padL + 30, padY + 1, 18, C.cn0);
+}
+
+function drawTower(x, base) {
+  const top = base - 86;
+  for (let col = 0; col < 3; col++) {
+    const cx = x + col * 7;
+    vline(cx, top + 8, base - top - 8, C.st2);
+    vline(cx + 1, top + 8, base - top - 8, C.st1);
+    px(cx, top + 8, C.st5);
+  }
+  for (let y = top + 14; y < base - 4; y += 12) {
+    hline(x, y, 16, C.st3);
+    hline(x, y + 1, 16, C.st0);
+    line(x, y, x + 14, y + 12, C.st4);
+    line(x + 14, y, x, y + 12, C.st2);
+  }
+  vline(x + 7, top, 10, C.st3);
+  px(x + 7, top, C.st5);
+  px(x + 7, top + 1, C.cr2);
+  rect3(x + 2, top + 18, 8, 6, C.st4, C.st2, C.st0);
+  px(x + 5, top + 20, C.sc3);
+  hline(x - 2, base - 2, 20, C.st0);
+}
+
+function drawRocket(x, base) {
+  const nose = base - 64;
+  const widths = [1, 2, 3, 4, 5, 6, 6, 7, 7, 7];
+  for (let i = 0; i < widths.length; i++) {
+    const w = widths[i];
+    const y = nose + i;
+    for (let dx = -w; dx <= w; dx++) {
+      let c = C.st3;
+      if (dx < -w + 2) c = C.st5;
+      else if (dx > w - 2) c = C.st1;
+      else if (dx > 1) c = C.st2;
+      px(x + dx, y, c);
+    }
+  }
+  for (let y = nose + 10; y < base - 10; y++) {
+    const bulge = (y > base - 22 && y < base - 14) ? 1 : 0;
+    const w = 7 + bulge;
+    for (let dx = -w; dx <= w; dx++) {
+      let c = C.st3;
+      if (dx <= -w + 1) c = C.st5;
+      else if (dx === -w + 2) c = C.st4;
+      else if (dx >= w - 1) c = C.st0;
+      else if (dx >= w - 3) c = C.st1;
+      else if ((y % 4) === 0) c = C.st2;
+      px(x + dx, y, c);
+    }
+    if (y === nose + 16 || y === nose + 17) {
+      hline(x - 2, y, 6, C.st0);
+    }
+  }
+  flap(x - 8, nose + 18, -1);
+  flap(x + 8, nose + 18, 1);
+  flap(x - 9, base - 18, -1);
+  flap(x + 9, base - 18, 1);
+  for (let k = -1; k <= 1; k++) {
+    rect3(x + k * 5 - 1, base - 8, 3, 6, C.st2, C.st1, C.ink);
+    px(x + k * 5, base - 3, C.st0);
+  }
+  hline(x - 8, base - 10, 17, C.st4);
+  px(x - 6, base - 9, C.st5);
+}
+
+function flap(x, y, dir) {
+  for (let i = 0; i < 7; i++) {
+    const w = 4 - Math.floor(i / 2);
+    for (let k = 0; k < w; k++) {
+      const c = k === 0 ? C.st4 : k === w - 1 ? C.st0 : C.st2;
+      px(x + dir * (i > 3 ? i - 2 : i) + dir * k, y + i, c);
+    }
+  }
+  px(x, y, C.st5);
+}
+
+/* ---------- building shell ---------- */
+function drawBuildingShell() {
+  for (let y = 26; y < 40; y++) {
+    for (let x = EAVE; x < W; x++) {
+      let c = C.st2;
+      if (y === 26) c = C.st5;
+      else if (y === 27) c = C.st4;
+      else if (y > 36) c = C.st0;
+      else if ((x % 18) === 0) c = C.st0;
+      else if ((x % 18) === 1) c = C.st4;
+      px(x, y, c);
+    }
+  }
+  for (let y = 36; y < 40; y++) {
+    for (let x = EAVE; x < WALL_L; x++) px(x, y, y === 36 ? C.st4 : C.st1);
+  }
+  vline(EAVE, 40, 8, C.st0);
+  for (let y = 40; y < 58; y++) {
+    for (let x = WALL_L; x < W; x++) {
+      let c = (y < 52) ? C.st1 : C.st0;
+      if (y === 40) c = C.st3;
+      if (y === 57) c = C.ink;
+      px(x, y, c);
+    }
+  }
+  for (let y = 58; y < CEIL; y++) {
+    for (let x = IN_L; x < IN_R; x++) {
+      const seam = ((x - IN_L) % 16 === 0) || ((y - 58) % 6 === 0);
+      let c = ((x >> 4) + (y >> 2)) & 1 ? C.st1 : C.st2;
+      if (seam) c = C.st0;
+      if (y === 58) c = C.st3;
+      px(x, y, c);
+    }
+  }
+  drawWallSection(WALL_L, false);
+  drawWallSection(IN_R, true);
+  for (let x = IN_L; x < IN_R; x += 22) px(x, 62, C.st4);
+
+  for (let y = FLOOR; y < FLOOR + 8; y++) {
+    for (let x = IN_L; x < IN_R; x++) {
+      const tile = Math.floor((x - IN_L) / 14);
+      let c = (tile & 1) ? C.st1 : C.st2;
+      if (y === FLOOR) c = C.st4;
+      else if (y === FLOOR + 7) c = C.st0;
+      else if ((x % 14) === 0) c = C.st0;
+      px(x, y, c);
+    }
+  }
+  for (let y = FLOOR + 8; y < FLOOR + 30; y++) {
+    for (let x = WALL_L; x < W; x++) {
+      let c = C.cn1;
+      if (y === FLOOR + 8) c = C.wd1;
+      else if (y === FLOOR + 29) c = C.cn0;
+      else if ((x + y * 3) % 11 === 0) c = C.cn2;
+      else if ((x * 2 + y) % 17 === 0) c = C.cn0;
+      px(x, y, c);
+    }
+  }
+  for (let i = 0; i < 3; i++) {
+    const bx = 250 + i * 120;
+    hline(bx, FLOOR + 24, 28, C.st3);
+    hline(bx, FLOOR + 25, 28, C.st5);
+    fill(bx + 11, FLOOR + 26, 6, 6, C.st2);
+    vline(bx + 11, FLOOR + 26, 6, C.st4);
+    hline(bx, FLOOR + 32, 28, C.st1);
+    hline(bx, FLOOR + 33, 28, C.ink);
+  }
+  drawPlenum();
+}
+
+function drawWallSection(x, flip) {
+  const layers = [
+    [4, C.st2, C.st4, C.st0],
+    [2, C.ink, C.ink, C.ink],
+    [6, C.cr0, C.cr1, C.cr0],
+    [4, C.wd0, C.wd2, C.wd0],
+    [10, C.cm0, C.cm1, C.cm0],
+  ];
+  let cx = x;
+  const seq = flip ? layers.slice().reverse() : layers;
+  for (let L = 0; L < seq.length; L++) {
+    const w = seq[L][0], a = seq[L][1], b = seq[L][2], d = seq[L][3];
+    for (let yy = 40; yy < H; yy++) {
+      for (let xx = 0; xx < w; xx++) {
+        let c = b;
+        if (xx === 0) c = flip ? d : a;
+        if (xx === w - 1) c = flip ? a : d;
+        if (L === 2 && ((xx + yy) % 5 === 0)) c = C.cr1;
+        if (L === 0 && (yy % 10 === 0)) c = C.st0;
+        px(cx + xx, yy, c);
+      }
+    }
+    cx += w;
+  }
+}
+
+function drawPlenum() {
+  const y0 = FLOOR + 34;
+  for (let y = y0; y < H; y++) {
+    for (let x = WALL_L; x < W; x++) {
+      let c = C.st0;
+      if ((x % 24) === 0) c = C.st1;
+      px(x, y, c);
+    }
+  }
+  for (const bx of [230, 360, 490]) {
+    hline(bx, y0 + 4, 26, C.st3);
+    hline(bx, y0 + 5, 26, C.st5);
+    hline(bx, y0 + 6, 26, C.st1);
+    vline(bx + 12, y0 + 7, 16, C.st2);
+    vline(bx + 13, y0 + 7, 16, C.st4);
+    hline(bx, y0 + 23, 26, C.st2);
+    hline(bx, y0 + 24, 26, C.st0);
+  }
+  const ductX = 420, ductY = y0 + 36;
+  for (let y = -8; y <= 8; y++) {
+    for (let x = -14; x <= 14; x++) {
+      const e = (x * x) / 196 + (y * y) / 64;
+      if (e > 1) continue;
+      const inner = (x * x) / 121 + (y * y) / 36;
+      let c = C.st2;
+      if (inner < 1) c = C.st0;
+      if (x < -8 && y < 0 && inner > 1) c = C.st5;
+      else if (y < -4 && inner > 1) c = C.st4;
+      else if (y > 4 && inner > 1) c = C.st1;
+      px(ductX + x, ductY + y, c);
+    }
+  }
+  for (let x = IN_L; x < IN_R; x++) {
+    px(x, y0 + 2, (x % 3 === 0) ? C.cr1 : (x % 3 === 1) ? C.go1 : C.st3);
+    if (x % 5 === 0) px(x, y0 + 1, C.st5);
+  }
+  cable(IN_L + 20, y0 + 8, 360, y0 + 28, 6, C.st3, C.st5);
+  cable(400, y0 + 10, 560, y0 + 22, 4, C.go1, C.go3);
+}
+
+/* ---------- room interior ---------- */
+function drawInteriorSurfaces() {
+  for (let y = CEIL; y < SILL; y++) {
+    for (let x = IN_L; x < IN_R; x++) {
+      const col = Math.floor((x - IN_L) / 18);
+      const row = Math.floor((y - CEIL) / 16);
+      let c = ((col + row) & 1) ? C.st1 : C.st0;
+      const lx = (x - IN_L) % 18;
+      const ly = (y - CEIL) % 16;
+      if (lx === 0 || ly === 0) c = C.st2;
+      if (lx === 17 || ly === 15) c = C.ink;
+      if (lx === 1 && ly === 1) c = C.st4;
+      px(x, y, c);
+    }
+  }
+  drawWindow(236, 98, 330, SILL - 98);
+  for (let y = SILL; y < FLOOR; y++) {
+    for (let x = IN_L; x < IN_R; x++) {
+      const col = Math.floor((x - IN_L) / 12);
+      let c = (col & 1) ? C.wd2 : C.wd1;
+      const lx = (x - IN_L) % 12;
+      if (lx === 0) c = C.wd3;
+      if (lx === 11) c = C.wd0;
+      if (lx > 8) c = (col & 1) ? C.wd1 : C.wd0;
+      px(x, y, c);
+    }
+  }
+  hline(IN_L, SILL, IN_R - IN_L, C.wd4);
+  hline(IN_L, SILL + 1, IN_R - IN_L, C.go1);
+  hline(IN_L, SILL + 2, IN_R - IN_L, C.wd0);
+  hline(IN_L, FLOOR - 3, IN_R - IN_L, C.wd3);
+  hline(IN_L, FLOOR - 2, IN_R - IN_L, C.wd4);
+  hline(IN_L, FLOOR - 1, IN_R - IN_L, C.wd0);
+
+  rect3(300, 78, 16, 6, C.go3, C.go2, C.go0);
+  rect3(470, 78, 16, 6, C.st5, C.st3, C.st0);
+  hline(302, 80, 12, C.go3);
+  px(306, 80, C.white);
+  px(474, 80, C.sc4);
+
+  rect3(IN_L + 8, 86, IN_R - IN_L - 16, 8, C.st3, C.st1, C.ink);
+  for (let x = IN_L + 12; x < IN_R - 12; x++) {
+    const c = (x % 5 === 0) ? C.cr1 : (x % 5 === 2) ? C.go1 : (x % 5 === 4) ? C.sc2 : C.st2;
+    px(x, 89, c);
+    if (x % 7 === 0) px(x, 88, C.st5);
+  }
+}
+
+function drawWindow(x, y, w, h) {
+  rect3(x, y, w, h, C.st4, C.st2, C.st0);
+  const innerX = x + 3, innerY = y + 3, innerW = w - 6, innerH = h - 6;
+  for (let yy = 0; yy < innerH; yy++) {
+    for (let xx = 0; xx < innerW; xx++) {
+      const gy = 188 + Math.floor(yy / innerH * 70);
+      let c = skyAt(innerX + xx, gy);
+      px(innerX + xx, innerY + yy, c);
+    }
+  }
+  const land = innerY + innerH - 8;
+  for (let xx = 0; xx < innerW; xx++) {
+    const j = land + ((xx % 9 < 3) ? -1 : (xx % 9 > 6) ? 1 : 0);
+    for (let yy = j; yy < innerY + innerH; yy++) px(innerX + xx, yy, C.wd0);
+  }
+  for (let m = 1; m < 4; m++) {
+    const mx = innerX + Math.floor(innerW * m / 4);
+    vline(mx, innerY, innerH, C.st1);
+    vline(mx + 1, innerY, innerH, C.st3);
+  }
+  hline(innerX, innerY + Math.floor(innerH / 2), innerW, C.st1);
+  const blindX = innerX + innerW - 70;
+  for (let yy = 0; yy < innerH; yy++) {
+    if ((yy % 4) < 2) hline(blindX, innerY + yy, 68, (yy % 4 === 0) ? C.wd2 : C.wd1);
+  }
+  vline(blindX, innerY, innerH, C.wd0);
+  for (let i = 0; i < 28; i++) {
+    px(innerX + 12 + i, innerY + 8 + Math.floor(i / 3), C.st5);
+  }
+  px(innerX + 20, innerY + 14, C.white);
+}
+
+function drawPatch(cx, cy) {
+  disk(cx, cy, 11, C.cr1);
+  disk(cx, cy, 9, C.go0);
+  disk(cx, cy, 8, C.cr0);
+  const star = [
+    [0, -5], [1, -2], [4, -1], [1, 0], [2, 4],
+    [0, 2], [-2, 4], [-1, 0], [-4, -1], [-1, -2],
+  ];
+  for (let i = 0; i < star.length; i++) {
+    const a = star[i], b = star[(i + 1) % star.length];
+    line(cx + a[0], cy + a[1], cx + b[0], cy + b[1], C.go2);
+  }
+  px(cx, cy - 3, C.go3);
+  px(cx, cy - 2, C.white);
+  px(cx - 1, cy - 1, C.go3);
+  px(cx, cy - 1, C.go3);
+  px(cx + 1, cy - 1, C.go3);
+  px(cx, cy, C.go2);
+  px(cx, cy + 1, C.go3);
+  px(cx - 2, cy + 2, C.go1);
+  px(cx + 2, cy + 2, C.go1);
+}
+
+function drawWhiteboard(x, y, w, h) {
+  rect3(x, y, w, h, C.st4, C.st2, C.st0);
+  fill(x + 2, y + 2, w - 4, h - 6, C.cm1);
+  hline(x + 2, y + 2, w - 4, C.white);
+  vline(x + 2, y + 2, h - 6, C.white);
+  hline(x + 3, y + h - 5, w - 6, C.cm0);
+  const pts = [[4, 18], [8, 16], [12, 13], [16, 11], [20, 10], [26, 12], [32, 16], [38, 20]];
+  for (let i = 0; i < pts.length - 1; i++) {
+    line(x + pts[i][0], y + pts[i][1], x + pts[i + 1][0], y + pts[i + 1][1], C.ink);
+  }
+  px(x + 38, y + 19, C.cr1);
+  hline(x + 4, y + 24, 36, C.st3);
+  vline(x + 4, y + 22, 5, C.st3);
+  rect3(x + w - 10, y + h - 4, 7, 3, C.pu2, C.pu1, C.pu0);
+  px(x + 6, y + h - 3, C.sc2);
+}
+
+function drawShelf(x, y) {
+  hline(x, y, 20, C.st4);
+  hline(x, y + 1, 20, C.st2);
+  hline(x, y + 2, 20, C.st0);
+  line(x + 2, y + 2, x + 2, y + 10, C.st2);
+  line(x + 2, y + 10, x + 10, y + 2, C.st1);
+  px(x + 1, y, C.st5);
+}
+
+function drawBowl(x, y) {
+  hline(x + 2, y, 10, C.st5);
+  hline(x + 1, y + 1, 12, C.st4);
+  hline(x, y + 2, 14, C.cm2);
+  for (let yy = 3; yy <= 6; yy++) {
+    const inset = yy > 5 ? 2 : 1;
+    for (let xx = inset; xx < 14 - inset; xx++) px(x + xx, y + yy, C.cm1);
+  }
+  hline(x + 3, y + 7, 8, C.cm0);
+  hline(x + 4, y + 8, 6, C.st2);
+  berry(x + 3, y - 1);
+  berry(x + 6, y - 2);
+  berry(x + 9, y - 1);
+  px(x + 5, y + 1, C.cr0);
+  px(x + 8, y, C.cr1);
+}
+
+function berry(x, y) {
+  px(x + 1, y, C.cr1);
+  px(x, y + 1, C.cr1);
+  px(x + 1, y + 1, C.cr2);
+  px(x + 2, y + 1, C.cr0);
+  px(x + 1, y + 2, C.cr0);
+  px(x + 1, y, C.cr3);
+}
+
+function drawRack(x, y, w, h) {
+  rect3(x, y, w, h, C.st3, C.st1, C.ink);
+  vline(x + 2, y + 2, h - 4, C.st0);
+  vline(x + w - 3, y + 2, h - 4, C.st0);
+  const units = [0, 16, 36, 70];
+  for (let i = 0; i < units.length; i++) hline(x + 3, y + 4 + units[i], w - 6, C.st4);
+  for (let yy = y + 8; yy < y + 18; yy += 2) hline(x + 6, yy, w - 12, C.st0);
+  rect3(x + 5, y + 22, w - 10, 16, C.st0, C.sc0, C.ink);
+  const wave = [8, 7, 5, 3, 2, 3, 6, 9, 11, 10, 7, 4, 3, 5, 8, 10, 8, 5, 3, 4, 7];
+  for (let i = 0; i < wave.length - 1; i++) {
+    line(x + 7 + i, y + 24 + wave[i], x + 8 + i, y + 24 + wave[i + 1], C.sc3);
+  }
+  px(x + 7 + 10, y + 24 + wave[10], C.sc4);
+  const lamps = [
+    C.cr2, C.st1, C.go2, C.sc3, C.st1, C.cr2, C.go2, C.st1,
+    C.st1, C.sc3, C.cr3, C.st1, C.go2, C.st1, C.sc3, C.cr1,
+    C.go2, C.st1, C.st1, C.sc3, C.cr2, C.go3, C.st1, C.sc2,
+  ];
+  for (let i = 0; i < lamps.length; i++) {
+    const lx = x + 6 + (i % 8) * 4;
+    const ly = y + 44 + Math.floor(i / 8) * 5;
+    px(lx, ly, lamps[i]);
+    px(lx + 1, ly, lamps[i]);
+    px(lx, ly + 1, C.st0);
+    px(lx + 1, ly + 1, C.st0);
+    if (lamps[i] === C.cr3 || lamps[i] === C.go3) px(lx, ly, C.white);
+  }
+  for (let yy = y + 78; yy < y + h - 6; yy += 3) {
+    hline(x + 6, yy, 8, C.st0);
+    hline(x + 18, yy, 10, C.st2);
+  }
+  px(x + 3, y + 3, C.st5);
+  px(x + w - 4, y + 3, C.st5);
+  rect3(x + w - 8, y + h - 16, 4, 8, C.st4, C.st2, C.st0);
+}
+
+function drawHoodedMonitor(x, y, w, h) {
+  fill(x - 1, y - 6, w + 2, 6, C.st1);
+  hline(x - 1, y - 6, w + 2, C.st4);
+  hline(x - 1, y - 1, w + 2, C.ink);
+  px(x + 4, y - 5, C.st5);
+  rect3(x, y, w, h, C.st4, C.st2, C.st0);
+  const sx = x + 5, sy = y + 5, sw = w - 10, sh = h - 16;
+  fill(sx, sy, sw, sh, C.sc0);
+  for (let yy = 2; yy < sh; yy += 3) hline(sx, sy + yy, sw, C.sc1);
+  for (let a = 0; a < 40; a++) {
+    const t = a / 39;
+    const ang = Math.PI * (0.15 + t * 0.7);
+    const ex = sx + 10 + Math.round(Math.cos(ang) * (sw - 16));
+    const ey = sy + sh - 8 + Math.round(-Math.sin(ang) * (sh - 12));
+    px(ex, ey, C.sc3);
+    if (a % 6 === 0) px(ex, ey, C.sc4);
+  }
+  disk(sx + 8, sy + sh - 10, 4, C.sc2);
+  disk(sx + 8, sy + sh - 10, 2, C.sc1);
+  px(sx + 7, sy + sh - 11, C.sc4);
+  px(sx + sw - 8, sy + 6, C.go2);
+  px(sx + sw - 6, sy + 4, C.sc4);
+  for (let i = 0; i < 18; i++) px(sx + 4 + i, sy + 3 + (i >> 2), C.st5);
+  for (let i = 0; i < 6; i++) {
+    const c = (i === 1 || i === 4) ? C.go2 : (i === 2 ? C.cr2 : C.st0);
+    px(x + 8 + i * 4, y + h - 7, c);
+    px(x + 9 + i * 4, y + h - 7, c === C.st0 ? C.st1 : C.go3);
+  }
+  text3(sx + 2, sy + 2, 'LEO', C.sc3);
+  vline(x + (w >> 1), y + h, 18, C.st2);
+  vline(x + (w >> 1) + 1, y + h, 18, C.st4);
+  disk(x + (w >> 1), y - 2, 2, C.st3);
+}
+
+function drawCamMonitor(x, y, w, h) {
+  rect3(x, y, w, h, C.st5, C.st3, C.st0);
+  fill(x + 2, y + 2, w - 4, h - 4, C.sc0);
+  const sx = x + 3, sy = y + 3, sw = w - 6, sh = h - 6;
+  for (let yy = 0; yy < sh; yy += 3) hline(sx, sy + yy, sw, C.sc1);
+  for (let a = 0; a < 28; a++) {
+    const t = a / 27;
+    const ex = sx + 4 + Math.round(t * 16);
+    const ey = sy + sh - 6 - Math.round(Math.sin(t * Math.PI) * 10);
+    px(ex, ey, C.sc2);
+  }
+  vline(sx + 2, sy + sh - 16, 12, C.sc2);
+  hline(sx + 2, sy + sh - 16, 10, C.sc2);
+  const pw = sw - 14;
+  const ph = 82;
+  const px0 = sx + sw - pw - 2;
+  const py0 = sy + 2;
+  rect3(px0, py0, pw, ph, C.st4, C.st1, C.ink);
+  hline(px0 + 1, py0 + 1, pw - 2, C.st2);
+  px(px0 + 3, py0 + 2, C.cr2);
+  px(px0 + 4, py0 + 2, C.cr3);
+  px(px0 + 3, py0 + 3, C.cr0);
+  text3(px0 + 7, py0 + 1, 'LIVE', C.cr2);
+  px(px0 + pw - 5, py0 + 2, C.st4);
+  px(px0 + pw - 4, py0 + 2, C.st4);
+  px(px0 + pw - 5, py0 + 3, C.st4);
+  px(px0 + pw - 4, py0 + 3, C.st4);
+  clip = { x: px0 + 2, y: py0 + 6, w: pw - 4, h: ph - 8 };
+  drawPortrait(px0 + 4, py0 + 7);
+  clip = null;
+  const strip = py0 + ph + 2;
+  hline(sx + 2, strip, sw - 4, C.sc2);
+  for (let i = 0; i < 5; i++) {
+    const bh = 4 + ((i * 3) % 7);
+    const bx = sx + 4 + i * 8;
+    vline(bx, strip + 10 - bh, bh, i === 2 ? C.go2 : C.sc3);
+    vline(bx + 1, strip + 10 - bh, bh, i === 2 ? C.go3 : C.sc2);
+  }
+  for (let i = 0; i < 16; i++) {
+    const yy = strip + 6 - Math.round(Math.sin(i * 0.7) * 3);
+    px(sx + 48 + i, yy, C.sc4);
+  }
+  for (let i = 0; i < 10; i++) px(x + 6 + i, y + 6 + (i >> 1), C.white);
+  fill(x + (w >> 1) - 6, y + h - 2, 12, 3, C.st2);
+  hline(x + (w >> 1) - 6, y + h - 2, 12, C.st4);
+  fill(x + (w >> 1) - 10, y + h + 1, 20, 3, C.st1);
+  hline(x + (w >> 1) - 10, y + h + 3, 20, C.ink);
+  px(x + w - 5, y + 4, C.sc3);
+  px(x + w - 4, y + 4, C.sc4);
+}
+
+const G3 = {
+  A: [0b010, 0b101, 0b111, 0b101, 0b101],
+  C: [0b011, 0b100, 0b100, 0b100, 0b011],
+  E: [0b111, 0b100, 0b110, 0b100, 0b111],
+  I: [0b111, 0b010, 0b010, 0b010, 0b111],
+  L: [0b100, 0b100, 0b100, 0b100, 0b111],
+  M: [0b101, 0b111, 0b101, 0b101, 0b101],
+  O: [0b111, 0b101, 0b101, 0b101, 0b111],
+  V: [0b101, 0b101, 0b101, 0b101, 0b010],
+};
+const G5 = {
+  S: [0b01110, 0b10001, 0b10000, 0b01110, 0b00001, 0b10001, 0b01110],
+  P: [0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000],
+  A: [0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
+  C: [0b01111, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b01111],
+  E: [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111],
+  X: [0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001],
+};
+
+function text3(x, y, s, col) {
+  for (let i = 0; i < s.length; i++) {
+    const g = G3[s[i]];
+    if (!g) { x += 4; continue; }
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (g[r] & (1 << (2 - c))) px(x + c, y + r, col);
+      }
+    }
+    x += 4;
+  }
+}
+
+function drawWordmark(x, y) {
+  const word = 'SPACEX';
+  const scale = 2;
+  const gw = 5 * scale, gh = 7 * scale, gap = 3;
+  const tw = word.length * (gw + gap) - gap;
+  rect3(x - 6, y - 4, tw + 12, gh + 8, C.st3, C.st0, C.ink);
+  hline(x - 5, y - 3, tw + 10, C.st2);
+  for (let i = 0; i < word.length; i++) {
+    const g = G5[word[i]];
+    const ox = x + i * (gw + gap);
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < 5; c++) {
+        if (g[r] & (1 << (4 - c))) {
+          fill(ox + c * scale + 1, y + r * scale + 1, scale, scale, C.ink);
+          fill(ox + c * scale, y + r * scale, scale, scale, C.cm2);
+          px(ox + c * scale, y + r * scale, C.white);
+        }
+      }
+    }
+  }
+}
+
+/* Front bust sized to the camera pop-up. Long midface, narrow eyes, short hair. */
+function drawPortrait(ox, oy) {
+  const cx = ox + 32;
+  const top = oy;
+  const hair = [5, 7, 9, 11, 13, 14, 15, 15, 14, 12];
+  for (let i = 0; i < hair.length; i++) {
+    const h = hair[i];
+    for (let x = -h; x <= h - 1; x++) {
+      let c = C.hr1;
+      if (x < -h + 3 && i < 6) c = C.hr2;
+      else if (x > h - 4) c = C.hr0;
+      else if (i > 1 && x % 6 === 0) c = C.hr0;
+      px(cx + x, top + i, c);
+    }
+  }
+  const face = [
+    13, 14, 15, 15, 16, 16, 16,
+    16, 16, 16,
+    16,
+    15, 15, 15, 15, 14, 14, 14, 14, 13, 13,
+    13, 12, 12,
+    12, 11, 11, 10, 10,
+  ];
+  for (let i = 0; i < face.length; i++) {
+    const h = face[i];
+    for (let x = -h; x <= h - 1; x++) {
+      const u = (x + h) / (h * 2);
+      let c = C.sk3;
+      if (i < 7 && u < 0.6) c = C.sk4;
+      else if (u < 0.14) c = C.sk4;
+      else if (u > 0.82) c = C.sk1;
+      else if (u > 0.66) c = C.sk2;
+      if (i > 23) c = u > 0.5 ? C.sk1 : C.sk2;
+      px(cx + x, top + 8 + i, c);
+    }
+  }
+  const wedgeL = [[-12, 8], [-11, 8], [-13, 9], [-12, 9], [-11, 9], [-13, 10], [-12, 10]];
+  const wedgeR = [[9, 8], [10, 8], [10, 9], [11, 9], [9, 10]];
+  for (const p of wedgeL) px(cx + p[0], top + p[1], C.sk4);
+  for (const p of wedgeR) px(cx + p[0], top + p[1], C.sk3);
+  for (let y = 15; y <= 22; y++) {
+    px(cx - 16, top + y, C.hr1);
+    px(cx - 15, top + y, C.hr0);
+    px(cx + 14, top + y, C.hr1);
+    px(cx + 15, top + y, C.hr0);
+  }
+  drawEar(cx - 20, top + 16, false);
+  drawEar(cx + 15, top + 16, true);
+  hline(cx - 13, top + 14, 6, C.hr0);
+  hline(cx + 5, top + 14, 6, C.hr0);
+  px(cx - 13, top + 13, C.hr1);
+  px(cx + 10, top + 13, C.hr1);
+  portraitEye(cx - 14, top + 16);
+  portraitEye(cx + 5, top + 16);
+  for (let i = 0; i < 9; i++) {
+    px(cx - 1, top + 18 + i, C.sk2);
+    px(cx, top + 18 + i, i < 3 ? C.sk4 : C.sk3);
+    px(cx + 1, top + 18 + i, C.sk1);
+  }
+  hline(cx - 3, top + 27, 7, C.sk2);
+  px(cx - 1, top + 27, C.sk3);
+  px(cx, top + 27, C.sk4);
+  px(cx - 3, top + 28, C.sk0);
+  px(cx + 3, top + 28, C.sk0);
+  px(cx - 2, top + 28, C.sk1);
+  px(cx + 2, top + 28, C.sk1);
+  px(cx, top + 28, C.sk3);
+  vline(cx + 11, top + 22, 6, C.sk1);
+  px(cx + 12, top + 25, C.sk0);
+  px(cx - 11, top + 25, C.sk2);
+  hline(cx - 4, top + 31, 7, C.lip);
+  px(cx - 4, top + 31, C.sk1);
+  hline(cx - 3, top + 32, 6, C.cr0);
+  hline(cx - 3, top + 33, 5, C.lipH);
+  px(cx - 1, top + 33, C.sk4);
+  px(cx + 3, top + 31, C.lipH);
+  px(cx - 2, top + 30, C.sk1);
+  px(cx + 1, top + 30, C.sk1);
+  hline(cx - 7, top + 36, 13, C.sk1);
+  hline(cx - 5, top + 37, 9, C.sk0);
+  for (let y = 0; y < 9; y++) {
+    const h = y < 6 ? 8 : 7;
+    for (let x = -h; x <= h - 1; x++) {
+      const u = (x + h) / (h * 2);
+      px(cx + x, top + 36 + y, u > 0.72 ? C.sk1 : u < 0.18 ? C.sk3 : C.sk2);
+    }
+  }
+  hline(cx - 6, top + 36, 11, C.sk0);
+  for (let y = 0; y < 16; y++) {
+    const half = Math.min(30, 12 + y * 2);
+    for (let x = -half; x <= half - 2; x++) {
+      const u = (x + half) / (half * 2);
+      let c = C.sh1;
+      if (u < 0.1) c = C.sh3;
+      else if (u < 0.24) c = C.sh2;
+      else if (u > 0.8) c = C.sh0;
+      if (y < 3 && Math.abs(x) < 7) c = C.sk2;
+      if (y === 3 && Math.abs(x) < 10) c = C.sh2;
+      if (y > 7 && x > 2 && x < 6) c = C.sh0;
+      px(cx + x, top + 45 + y, c);
+    }
+  }
+  px(cx - 16, top + 50, C.sh3);
+  px(cx - 22, top + 53, C.st4);
+}
+
+function portraitEye(x, y) {
+  hline(x + 1, y - 1, 4, C.sk2);
+  px(x, y, C.sk0);
+  px(x + 1, y, C.cm2);
+  px(x + 2, y, C.white);
+  px(x + 3, y, C.iris);
+  px(x + 4, y, C.pupil);
+  px(x + 5, y, C.irisD);
+  px(x + 6, y, C.sk1);
+  hline(x + 1, y + 1, 5, C.sk1);
+  px(x + 3, y + 1, C.sk2);
+}
+
+function drawEar(x, y, flip) {
+  const s = flip ? -1 : 1;
+  for (let i = 0; i < 8; i++) {
+    px(x + s * (i < 2 || i > 5 ? 1 : 0), y + i, C.sk2);
+    px(x + s * 2, y + i, i > 1 && i < 6 ? C.sk0 : C.sk1);
+    px(x + s * 3, y + i, C.sk3);
+  }
+  px(x + s * 2, y + 3, C.sk1);
+  px(x + (flip ? -1 : 4), y + 7, C.sk1);
+}
+
+/* In-room Elon, 3/4, weight back, one hand on hip, the other reaching. */
+function drawElon() {
+  const hx = HX, hy = HY;
+  const half = [3, 4, 5, 6, 7, 7, 8, 8, 8, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3];
+  const nose = [0, 0, 0, 0, 0, 0, 1, 2, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (let i = 0; i < half.length; i++) {
+    const y = hy + 3 + i;
+    const x0 = hx - half[i];
+    const x1 = hx + half[i] + nose[i];
+    for (let x = x0; x <= x1; x++) {
+      const u = (x - x0) / Math.max(1, x1 - x0);
+      let c = C.sk3;
+      if (u < 0.2) c = C.sk4;
+      else if (u > 0.82) c = C.sk1;
+      else if (u > 0.65) c = C.sk2;
+      if (i > 15) c = u > 0.5 ? C.sk1 : C.sk2;
+      px(x, y, c);
+    }
+  }
+  const hair = [
+    [-5, 5], [-7, 6], [-8, 7], [-9, 7], [-9, 6], [-9, 4],
+    [-9, 2], [-9, 0], [-9, -2], [-8, -3], [-7, -4], [-6, -4], [-5, -4],
+  ];
+  for (let i = 0; i < hair.length; i++) {
+    const y = hy + i;
+    for (let x = hx + hair[i][0]; x <= hx + hair[i][1]; x++) {
+      const u = (x - (hx + hair[i][0])) / Math.max(1, hair[i][1] - hair[i][0]);
+      let c = C.hr1;
+      if (u < 0.2) c = C.hr2;
+      else if (u > 0.7) c = C.hr0;
+      if ((x + i) % 5 === 0) c = C.hr0;
+      px(x, y, c);
+    }
+  }
+  drawEar(hx - 12, hy + 10, false);
+  // Sideburn in front of the ear.
+  vline(hx - 8, hy + 8, 6, C.hr1);
+  px(hx - 7, hy + 9, C.hr0);
+  // Brow, eye, nose tip, mouth. Eye looks toward the console (right).
+  hline(hx - 4, hy + 8, 5, C.hr0);
+  px(hx - 4, hy + 7, C.hr1);
+  px(hx - 4, hy + 10, C.cm2);
+  px(hx - 3, hy + 10, C.iris);
+  px(hx - 2, hy + 10, C.pupil);
+  px(hx - 3, hy + 9, C.white);
+  px(hx - 1, hy + 10, C.sk1);
+  px(hx + 9, hy + 12, C.sk0);
+  px(hx + 10, hy + 13, C.sk0);
+  px(hx + 8, hy + 13, C.sk1);
+  hline(hx - 2, hy + 16, 4, C.lip);
+  px(hx + 2, hy + 15, C.lipH);
+  px(hx - 1, hy + 17, C.sk1);
+  // Neck
+  for (let y = hy + 23; y < hy + 28; y++) {
+    for (let x = -3; x <= 2; x++) {
+      px(hx + x, y, x > 0 ? C.sk1 : C.sk3);
+    }
+  }
+  // Torso, black shirt, light on the window side (left), shadow toward the screen.
+  for (let y = 0; y < 20; y++) {
+    const halfT = [8, 11, 13, 14, 14, 13, 12, 12, 11, 11, 10, 10, 11, 11, 12, 12, 12, 11, 11, 10][y];
+    for (let x = hx - halfT; x <= hx + halfT - 2; x++) {
+      const u = (x - (hx - halfT)) / (halfT * 2);
+      let c = C.sh1;
+      if (u < 0.14) c = C.sh3;
+      else if (u < 0.3) c = C.sh2;
+      else if (u > 0.78) c = C.sh0;
+      if (y < 2 && Math.abs(x - hx) < 4) c = C.sk2;
+      if (y === 4 && Math.abs(x - hx) < 7) c = C.sh2;
+      if (y === 9 && x > hx - 2 && x < hx + 8) c = C.sh0;
+      px(x, hy + 28 + y, c);
+    }
+  }
+  px(hx - 12, hy + 32, C.cm1);
+  px(hx - 13, hy + 34, C.st4);
+  // Sleeve and akimbo arm (his left, image-left).
+  armStrip(hx - 12, hy + 32, hx - 24, hy + 44, 2, C.sh2, C.sh1, C.sh0);
+  armStrip(hx - 24, hy + 44, hx - 14, hy + 52, 2, C.sk4, C.sk3, C.sk1);
+  drawFist(hx - 16, hy + 50);
+  // Reaching arm (his right). Short sleeve, forearm to the keys.
+  armStrip(hx + 10, hy + 32, hx + 18, hy + 38, 2, C.sh2, C.sh1, C.sh0);
+  armStrip(hx + 16, hy + 38, 386, 222, 2, C.sk4, C.sk3, C.sk1);
+  drawReachHand(384, 218);
+  // Belt
+  hline(hx - 10, hy + 48, 20, C.jn0);
+  hline(hx - 10, hy + 49, 20, C.ink);
+  px(hx - 1, hy + 48, C.go2);
+  px(hx, hy + 48, C.go3);
+  px(hx + 1, hy + 48, C.go1);
+  // Legs. Back leg (image-left) planted, front leg stepped toward the desk.
+  drawLeg(hx - 10, hy + 50, 0, true);
+  drawLeg(hx + 1, hy + 50, 3, false);
+}
+
+function armStrip(x0, y0, x1, y1, rad, cL, cM, cD) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  for (let i = 0; i <= n; i++) {
+    const x = Math.round(x0 + (x1 - x0) * i / n);
+    const y = Math.round(y0 + (y1 - y0) * i / n);
+    for (let dy = -rad; dy <= rad; dy++) {
+      for (let dx = -rad; dx <= rad; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > rad + 1) continue;
+        let c = cM;
+        if (dx <= 0 && dy <= 0) c = cL;
+        if (dx > 0 && dy > 0) c = cD;
+        px(x + dx, y + dy, c);
+      }
+    }
+  }
+}
+
+function drawFist(x, y) {
+  rect3(x, y, 6, 5, C.sk4, C.sk3, C.sk1);
+  hline(x + 1, y + 1, 4, C.sk1);
+  px(x + 5, y + 2, C.sk2);
+  px(x + 5, y + 3, C.sk4);
+  px(x - 1, y + 3, C.sk2);
+}
+
+function drawReachHand(x, y) {
+  rect3(x, y + 1, 5, 4, C.sk4, C.sk3, C.sk1);
+  px(x + 5, y, C.sk2);
+  px(x + 6, y, C.sk4);
+  px(x + 7, y, C.sc4);
+  px(x + 5, y + 1, C.sk3);
+  px(x + 6, y + 1, C.sk2);
+  px(x + 5, y + 3, C.sk2);
+  px(x + 6, y + 3, C.sk4);
+  px(x + 7, y + 3, C.sk3);
+  px(x + 1, y + 5, C.sk3);
+  px(x + 2, y + 5, C.sk4);
+  px(x + 3, y + 5, C.sk2);
+}
+
+function drawLeg(x, y, footShift, back) {
+  const dark = back ? C.jn0 : C.jn1;
+  const mid = back ? C.jn1 : C.jn2;
+  const hi = back ? C.jn2 : C.jn3;
+  for (let i = 0; i < 24; i++) {
+    const w = i < 5 ? 5 : 4;
+    const shift = i > 16 ? footShift : 0;
+    for (let k = 0; k < w; k++) {
+      let c = mid;
+      if (k === 0) c = hi;
+      if (k === w - 1) c = dark;
+      px(x + k + shift, y + i, c);
+    }
+  }
+  if (!back) {
+    hline(x + 1, y + 6, 3, C.jn0);
+    vline(x + 1, y + 6, 3, C.jn0);
+    px(x + 2, y + 7, C.jn3);
+  }
+  const sx = x + footShift - 1;
+  const sy = y + 23;
+  hline(sx, sy, 7, C.sh1);
+  hline(sx, sy + 1, 7, C.sh0);
+  hline(sx, sy + 2, 7, C.ink);
+  px(sx, sy, C.st4);
+  px(sx + 1, sy, C.sh2);
+}
+
+function drawKneeBot(x, floorY) {
+  const y = floorY - 36;
+  robotHead(x + 8, y, true);
+  robotTorso(x + 4, y + 12, 14, 12);
+  armStrip(x + 6, y + 16, x - 8, y + 18, 2, C.st4, C.st3, C.st1);
+  px(x - 10, y + 17, C.st5);
+  px(x - 9, y + 18, C.sc3);
+  px(x - 8, y + 19, C.st4);
+  armStrip(x + 16, y + 16, x + 22, y + 26, 2, C.st4, C.st2, C.st0);
+  px(x + 23, y + 25, C.go2);
+  px(x + 24, y + 26, C.st5);
+  px(x + 24, y + 27, C.st3);
+  for (let i = 0; i < 8; i++) {
+    px(x + 6 + (i > 4 ? i - 4 : 0), y + 24 + i, C.st2);
+    px(x + 7 + (i > 4 ? i - 4 : 0), y + 24 + i, C.st4);
+  }
+  hline(x + 4, floorY - 3, 6, C.st1);
+  hline(x + 4, floorY - 2, 6, C.st0);
+  for (let i = 0; i < 10; i++) {
+    px(x + 14, y + 22 + i, C.st3);
+    px(x + 15, y + 22 + i, C.st1);
+  }
+  hline(x + 12, floorY - 3, 7, C.st3);
+  hline(x + 12, floorY - 2, 7, C.ink);
+  px(x + 12, floorY - 3, C.st5);
+  cable(x + 24, y + 27, x + 30, floorY - 8, 4, C.st3, C.st5);
+}
+
+function drawWalker(x, floorY) {
+  const headY = floorY - 52;
+  robotHead(x - 2, headY, true);
+  robotTorso(x - 6, headY + 12, 14, 14);
+  armStrip(x - 4, headY + 16, x - 16, headY + 8, 2, C.st4, C.st3, C.st1);
+  drawTray(x - 24, headY + 4);
+  armStrip(x + 8, headY + 18, x + 16, headY + 28, 2, C.st4, C.st2, C.st0);
+  for (let i = 0; i < 16; i++) {
+    px(x + 2, headY + 26 + i, C.st2);
+    px(x + 3, headY + 26 + i, C.st4);
+    px(x + 4, headY + 26 + i, C.st1);
+  }
+  hline(x, floorY - 3, 8, C.st3);
+  hline(x, floorY - 2, 8, C.ink);
+  px(x, floorY - 3, C.st5);
+  for (let i = 0; i < 8; i++) {
+    px(x - 6 - (i < 4 ? 0 : i - 4), headY + 26 + i, C.st3);
+    px(x - 5 - (i < 4 ? 0 : i - 4), headY + 26 + i, C.st4);
+  }
+  for (let i = 0; i < 6; i++) {
+    px(x - 12 + i, headY + 34, i < 2 ? C.st4 : C.st2);
+  }
+  hline(x - 14, headY + 38, 7, C.st3);
+  hline(x - 14, headY + 39, 7, C.st5);
+  px(x - 8, floorY - 1, C.cm0);
+  px(x - 6, floorY - 2, C.cn2);
+}
+
+function robotHead(x, y, faceLeft) {
+  for (let yy = 0; yy < 10; yy++) {
+    const inset = yy === 0 ? 2 : yy === 1 ? 1 : yy > 7 ? 1 : 0;
+    for (let xx = inset; xx < 12 - inset; xx++) {
+      let c = C.st3;
+      if (xx <= inset + 1 || yy < 2) c = C.st4;
+      if (xx > 8) c = C.st1;
+      if (yy < 2 && xx < 5) c = C.st5;
+      px(x + xx, y + yy, c);
+    }
+  }
+  hline(x + 1, y + 4, 10, C.sc0);
+  hline(x + 1, y + 5, 10, C.ink);
+  hline(x + 1, y + 6, 10, C.sc0);
+  const ex = faceLeft ? x + 3 : x + 7;
+  px(ex, y + 5, C.sc4);
+  px(ex + 1, y + 5, C.sc3);
+  px(ex + 3, y + 5, C.sc3);
+  px(x + 2, y + 4, C.st5);
+  px(x + 5, y + 1, C.white);
+}
+
+function robotTorso(x, y, w, h) {
+  rect3(x, y, w, h, C.st5, C.st3, C.st0);
+  rect3(x + 3, y + 2, w - 6, h - 5, C.st4, C.st2, C.st1);
+  px(x + (w >> 1) - 1, y + 4, C.go2);
+  px(x + (w >> 1), y + 5, C.go3);
+  px(x + (w >> 1) + 1, y + 4, C.go2);
+  px(x + (w >> 1), y + 3, C.go1);
+  px(x + 2, y + h - 4, C.cr2);
+  hline(x + 2, y + h - 2, w - 4, C.st0);
+  px(x + 1, y + 1, C.white);
+}
+
+function drawTray(x, y) {
+  hline(x + 1, y, 10, C.st5);
+  hline(x, y + 1, 12, C.st3);
+  hline(x, y + 2, 12, C.st0);
+  px(x + 2, y - 1, C.go1);
+  px(x + 3, y - 2, C.go3);
+  px(x + 4, y - 4, C.pu3);
+  px(x + 5, y - 5, C.pu2);
+  px(x + 6, y - 5, C.pu1);
+  px(x + 7, y - 4, C.pu2);
+  px(x + 8, y - 3, C.go2);
+  px(x + 5, y - 4, C.white);
+  px(x + 4, y - 3, C.pu2);
+  px(x + 6, y - 3, C.pu0);
+  px(x + 3, y - 1, C.go2);
+}
+
+function drawChair(x, y) {
+  for (let i = 0; i < 26; i++) {
+    const lean = Math.floor(i * 0.4);
+    const yy = y - 8 - i;
+    const xx = x - lean;
+    const col = i < 3 ? C.st2 : C.st3;
+    hline(xx, yy, 6, i === 0 ? C.st5 : col);
+    px(xx, yy, C.st5);
+    px(xx + 5, yy, C.st0);
+  }
+  hline(x + 2, y - 8, 16, C.st4);
+  hline(x + 2, y - 7, 16, C.st2);
+  hline(x + 2, y - 6, 16, C.st0);
+  hline(x + 4, y - 5, 10, C.st1);
+  vline(x + 10, y - 5, 8, C.st2);
+  vline(x + 11, y - 5, 8, C.st4);
+  hline(x + 2, y + 2, 18, C.st1);
+  hline(x + 2, y + 3, 18, C.ink);
+  disk(x + 3, y + 4, 2, C.st0);
+  disk(x + 16, y + 3, 2, C.st0);
+  px(x + 2, y + 3, C.st4);
+  px(x + 15, y + 2, C.st4);
+  px(x + 16, y + 1, C.st3);
+}
+
+function drawDesk(x, y, w) {
+  for (let yy = 0; yy < 4; yy++) {
+    for (let xx = 0; xx < w; xx++) {
+      let c = yy === 0 ? C.st4 : yy === 3 ? C.st0 : C.st2;
+      if (xx % 16 === 0) c = C.st1;
+      px(x + xx, y + yy, c);
+    }
+  }
+  for (let yy = 4; yy < 32; yy++) {
+    for (let xx = 0; xx < w; xx++) {
+      let c = C.st1;
+      if (xx < 2) c = C.st3;
+      else if (xx > w - 3) c = C.ink;
+      else if (yy === 14) c = C.st2;
+      px(x + xx, y + yy, c);
+    }
+  }
+  rect3(x + 8, y + 16, 10, 4, C.st4, C.st3, C.st0);
+  for (let i = 0; i < 8; i++) px(x + 18 + i * 6, y + 2, C.sc2);
+}
+
+function drawKeyboard(x, y) {
+  rect3(x, y, 54, 8, C.st4, C.st1, C.ink);
+  for (let row = 0; row < 2; row++) {
+    for (let k = 0; k < 12; k++) {
+      const kx = x + 2 + k * 4;
+      const ky = y + 1 + row * 3;
+      px(kx, ky, C.st4);
+      px(kx + 1, ky, C.st5);
+      px(kx, ky + 1, C.st2);
+      px(kx + 1, ky + 1, C.st0);
+    }
+  }
+}
+
+function drawMug(x, y) {
+  for (let yy = 0; yy < 9; yy++) {
+    const inset = yy === 8 ? 1 : 0;
+    for (let xx = inset; xx < 7 - inset; xx++) {
+      let c = C.cm1;
+      if (xx === inset) c = C.white;
+      else if (xx > 4) c = C.cm0;
+      if (yy === 0) c = C.wd0;
+      px(x + xx, y + yy, c);
+    }
+  }
+  px(x + 2, y, C.pu0);
+  px(x + 3, y, C.go0);
+  px(x + 7, y + 2, C.cm2);
+  px(x + 8, y + 3, C.cm1);
+  px(x + 8, y + 4, C.cm0);
+  px(x + 7, y + 5, C.cm2);
+  px(x + 3, y - 2, C.cm2);
+  px(x + 4, y - 4, C.go3);
+  px(x + 2, y - 3, C.cm1);
+}
+
+function drawLamp(x, y) {
+  hline(x + 2, y, 8, C.go2);
+  hline(x + 1, y + 1, 10, C.go1);
+  hline(x + 1, y + 2, 10, C.go0);
+  vline(x + 5, y - 8, 8, C.go1);
+  vline(x + 6, y - 8, 8, C.go3);
+  line(x + 6, y - 8, x + 14, y - 14, C.go2);
+  px(x + 14, y - 14, C.go3);
+  for (let i = 0; i < 5; i++) {
+    const w = 3 + i;
+    for (let k = 0; k < w; k++) {
+      const c = k === 0 ? C.go3 : k === w - 1 ? C.go0 : C.go1;
+      px(x + 12 + k, y - 18 + i, c);
+    }
+  }
+  px(x + 14, y - 14, C.go3);
+  px(x + 15, y - 13, C.white);
+  for (let i = 0; i < 6; i++) px(x + 13 + i, y + 1, C.go2);
+}
+
+function drawPie(x, y) {
+  const dome = [3, 5, 7, 8, 9, 9, 8, 7];
+  for (let i = 0; i < dome.length; i++) {
+    const w = dome[i];
+    for (let k = -w; k <= w; k++) {
+      let c = C.pu2;
+      if (i < 2) c = (k % 2 === 0) ? C.go3 : C.go2;
+      else if (k <= -w + 1 || k >= w - 1) c = C.go1;
+      else if (k > 2) c = C.pu1;
+      else if (i > 4 && k > -2 && k < 3) c = C.pu0;
+      if (i === 3 && k < 0) c = C.pu3;
+      px(x + 9 + k, y + i, c);
+    }
+  }
+  for (let k = 0; k < 7; k++) px(x + 3 + k * 2, y + 2, C.go3);
+  for (let i = 0; i < 5; i++) {
+    px(x + 14 + i, y + 3 + i, C.st2);
+    px(x + 15 + i, y + 4 + i, C.st0);
+  }
+  px(x + 16, y + 5, C.pu1);
+  hline(x, y + 8, 20, C.st4);
+  hline(x - 1, y + 9, 22, C.st5);
+  hline(x, y + 10, 20, C.st2);
+  hline(x + 2, y + 11, 16, C.st0);
+  px(x + 1, y + 9, C.white);
+  hline(x - 2, y + 12, 24, C.wd3);
+  hline(x - 2, y + 13, 24, C.wd0);
+  px(x + 4, y + 13, C.wd4);
+}
+
+function drawCables() {
+  cable(230, 94, 214, 150, 8, C.st2, C.st5);
+  cable(260, 94, 300, 118, 6, C.sc2, C.sc4);
+  cable(420, 94, 450, 108, 5, C.st3, C.st5);
+  cable(214, 250, 300, FLOOR - 1, 3, C.st2, C.st4);
+  cable(330, FLOOR - 1, 470, FLOOR - 1, 2, C.go0, C.go2);
+  cable(480, 230, 520, FLOOR - 1, 4, C.cr1, C.cr3);
+  const coil = [[0, 2], [1, 1], [2, 0], [3, 0], [4, 1], [4, 2], [3, 3], [2, 3], [1, 2], [2, 1], [3, 2]];
+  for (const p of coil) {
+    px(222 + p[0], FLOOR - 8 + p[1], C.st3);
+    px(222 + p[0], FLOOR - 7 + p[1], C.ink);
+  }
+  px(224, FLOOR - 6, C.st5);
+}
+
+function drawScrewdriver(x, y) {
+  line(x, y, x + 10, y - 4, C.st4);
+  line(x, y + 1, x + 8, y - 3, C.st2);
+  px(x + 11, y - 5, C.st5);
+  px(x - 1, y + 1, C.pu1);
+  px(x - 2, y + 2, C.pu2);
+  px(x - 3, y + 2, C.pu0);
+  px(x - 2, y + 1, C.pu3);
+}
+
+function contact(x, y, w) {
+  for (let i = 0; i < w; i++) px(x + i, y, (i & 1) ? C.st0 : C.ink);
+}
+
+function drawScene() {
+  drawSky();
+  drawStars();
+  drawMoon(44, 30);
+  drawSatellite(108, 54);
+  for (let i = 0; i < 3; i++) {
+    const y = 206 + i * 4;
+    for (let x = 8; x < 140; x++) {
+      if (BAYER[y & 3][x & 3] < 4 + i) px(x, y, i === 2 ? C.sky8 : C.sky7);
+    }
+  }
+  drawTerrain();
+  const pad = hillY(40);
+  drawTower(22, pad + 6);
+  drawRocket(52, pad + 5);
+  drawBuildingShell();
+  drawInteriorSurfaces();
+  drawWordmark(286, 42);
+  // Antenna and dish break the roofline.
+  vline(548, 12, 16, C.st2);
+  vline(549, 12, 16, C.st4);
+  px(548, 11, C.cr2);
+  px(549, 11, C.cr3);
+  px(548, 10, C.white);
+  line(500, 30, 512, 18, C.st3);
+  for (let i = 0; i < 6; i++) hline(506 + i, 16 + i, 8 - i, i < 2 ? C.st5 : C.st3);
+  px(510, 18, C.st0);
+
+  drawPatch(214, 112);
+  drawWhiteboard(248, 214, 52, 40);
+  drawRack(204, 148, 40, 110);
+  drawKneeBot(214, FLOOR);
+  drawHoodedMonitor(258, 116, 68, 52);
+  drawChair(304, FLOOR - 4);
+  drawDesk(388, 226, 150);
+  drawCamMonitor(404, 102, 98, 124);
+  drawKeyboard(396, 218);
+  drawMug(522, 216);
+  drawLamp(498, 224);
+  drawPie(456, 208);
+  // Warm pool and screen pool on the desktop.
+  for (let i = 0; i < 14; i++) px(470 + i, 226, (i % 3 === 0) ? C.go2 : C.go1);
+  for (let i = 0; i < 18; i++) px(420 + i, 227, (i & 1) ? C.sc1 : C.sc2);
+  drawCables();
+  drawScrewdriver(236, FLOOR - 6);
+  contact(312, FLOOR, 14);
+  contact(HX - 12, FLOOR, 10);
+  contact(HX + 2, FLOOR, 12);
+  contact(548, FLOOR, 10);
+  contact(214, FLOOR, 16);
+  drawElon();
+  drawWalker(552, FLOOR);
+  drawShelf(562, 156);
+  drawBowl(564, 148);
+  berry(578, 228);
+  px(577, FLOOR, C.ink);
+  px(578, FLOOR, C.ink);
+  px(579, FLOOR, C.st0);
+  // Sticky note on the camera monitor bezel.
+  rect3(492, 112, 8, 7, C.go3, C.go2, C.go0);
+  hline(493, 114, 5, C.go0);
+  hline(493, 116, 4, C.go0);
+  px(498, 112, C.cm2);
+}
+
+function present() {
+  const off = document.createElement('canvas');
+  off.width = W;
+  off.height = H;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(W, H);
+  const data = img.data;
+  for (let i = 0; i < W * H; i++) {
+    const rgb = RGB[buf[i]];
+    const o = i << 2;
+    data[o] = rgb[0];
+    data[o + 1] = rgb[1];
+    data[o + 2] = rgb[2];
+    data[o + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+
+  const cropMode = new URLSearchParams(location.search).get('crop') === '1';
+  const view = document.getElementById('view');
+  const ctx = view.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  if (cropMode) {
+    view.width = CROP.w * 2;
+    view.height = CROP.h * 2;
+    view.style.width = view.width + 'px';
+    view.style.height = view.height + 'px';
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, CROP.x, CROP.y, CROP.w, CROP.h, 0, 0, CROP.w * 2, CROP.h * 2);
+  } else {
+    view.width = W * SCALE;
+    view.height = H * SCALE;
+    view.style.width = view.width + 'px';
+    view.style.height = view.height + 'px';
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, W, H, 0, 0, W * SCALE, H * SCALE);
+  }
+}
+
+try {
+  drawScene();
+  present();
+} catch (err) {
+  const view = document.getElementById('view');
+  view.width = 800;
+  view.height = 200;
+  const ctx = view.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px monospace';
+  const msg = String(err && err.stack || err);
+  msg.split('\n').forEach((line, i) => ctx.fillText(line, 12, 28 + i * 18));
+}
+</script>
+</body>
+</html>
