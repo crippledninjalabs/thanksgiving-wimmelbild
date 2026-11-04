@@ -1,0 +1,106 @@
+// Still viewer. Scroll changes the integer zoom. Nothing animates.
+
+import { renderRGBA, W, H } from './scene.js';
+
+const params = new URLSearchParams(location.search);
+const view = document.getElementById('view');
+const stage = document.getElementById('stage');
+const hud = document.getElementById('hud');
+const readout = document.getElementById('readout');
+const back = document.createElement('canvas');
+back.width = W;
+back.height = H;
+const bctx = back.getContext('2d', { alpha: false });
+const img = bctx.createImageData(W, H);
+
+let zoom = params.has('zoom') ? clampZoom(params.get('zoom')) : fitZoom();
+let userPan = false;
+let panX = 0;
+let panY = 0;
+let dragging = false;
+let dragX = 0;
+let dragY = 0;
+
+if (params.has('clean')) hud.classList.add('hidden');
+
+applyZoom(zoom);
+window.addEventListener('resize', () => { if (!userPan) center(); else layout(); });
+window.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  applyZoom(zoom + (e.deltaY > 0 ? -1 : 1));
+}, { passive: false });
+
+stage.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  userPan = true;
+  dragX = e.clientX - panX;
+  dragY = e.clientY - panY;
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  panX = e.clientX - dragX;
+  panY = e.clientY - dragY;
+  layout();
+});
+stage.addEventListener('pointerup', () => { dragging = false; });
+stage.addEventListener('dblclick', () => { userPan = false; center(); });
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'h' || e.key === 'H') hud.classList.toggle('hidden');
+  else if (e.key === '0') { userPan = false; applyZoom(fitZoom()); }
+  else if (e.key === '+' || e.key === '=') applyZoom(zoom + 1);
+  else if (e.key === '-' || e.key === '_') applyZoom(zoom - 1);
+  else if (e.key === 's' || e.key === 'S') savePNG();
+});
+
+function fitZoom() {
+  const z = Math.min(
+    Math.floor((window.innerWidth - 24) / W),
+    Math.floor((window.innerHeight - 24) / H),
+  );
+  return clampZoom(z || 1);
+}
+function clampZoom(z) { return Math.max(1, Math.min(8, z | 0)); }
+
+function applyZoom(z) {
+  zoom = clampZoom(z);
+  const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
+  view.style.width = `${W * zoom}px`;
+  view.style.height = `${H * zoom}px`;
+  view.width = W * zoom * dpr;
+  view.height = H * zoom * dpr;
+  if (!userPan) center();
+  else layout();
+  paint();
+}
+function center() {
+  panX = Math.floor((window.innerWidth - W * zoom) / 2);
+  panY = Math.floor((window.innerHeight - H * zoom) / 2);
+  layout();
+}
+function layout() {
+  stage.style.transform = `translate(${panX | 0}px, ${panY | 0}px)`;
+}
+function paint() {
+  img.data.set(renderRGBA());
+  bctx.putImageData(img, 0, 0);
+  const ctx = view.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(back, 0, 0, view.width, view.height);
+  readout.textContent = `still · ${zoom}× · Elon at the terminal`;
+}
+function savePNG() {
+  const big = document.createElement('canvas');
+  big.width = W * 3;
+  big.height = H * 3;
+  const ctx = big.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(back, 0, 0, big.width, big.height);
+  const a = document.createElement('a');
+  a.href = big.toDataURL('image/png');
+  a.download = 'banquet-hall-3x.png';
+  a.click();
+}
+
+paint();
