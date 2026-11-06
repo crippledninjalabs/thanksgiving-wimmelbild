@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Thanksgiving at SpaceX: scene-shell-v3 (varied tape, show cruiser, trees, non-banded sky)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #121a3d; overflow: hidden; font-family: system-ui, sans-serif; }
+  #stage { position: fixed; inset: 0; touch-action: none; cursor: grab; }
+  #stage.drag { cursor: grabbing; }
+  #stage svg { display: block; width: 100%; height: 100%; }
+  #ui { position: fixed; right: 12px; bottom: 12px; display: flex; gap: 6px; z-index: 2; }
+  #ui button { width: 44px; height: 44px; font-size: 22px; border-radius: 10px; border: 2px solid #1c1a26; background: #fbfaf6; cursor: pointer; }
+  #hint { position: fixed; left: 12px; bottom: 12px; color: #fbfaf6; font-size: 13px; opacity: .8; z-index: 2; }
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #fbfaf6; }
+</style>
+</head>
+<body>
+<div id="loading">loading scene...</div>
+<div id="stage"></div>
+<div id="ui"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">&minus;</button><button id="home" title="Whole frame">&#8962;</button></div>
+<div id="hint">drag to pan · wheel / pinch / double-tap to zoom</div>
+<script>
+(async () => {
+  const W = 7680, H = 4320, MAXZ = 80;            // scene units; max zoom vs. fit
+  const stage = document.getElementById('stage');
+  stage.innerHTML = await (await fetch('scene.svg')).text();   // relative path: works on GitHub Pages
+  document.getElementById('loading').remove();
+  const svg = stage.querySelector('svg');
+  svg.removeAttribute('width'); svg.removeAttribute('height');
+  let cx = W / 2, cy = H / 2, s = 1, raf = 0;      // view centre (units) + units per CSS px
+  const fit = () => Math.max(W / stage.clientWidth, H / stage.clientHeight);
+  function clamp() {
+    s = Math.min(fit(), Math.max(fit() / MAXZ, s));
+    const hw = stage.clientWidth * s / 2, hh = stage.clientHeight * s / 2;
+    cx = hw * 2 >= W ? W / 2 : Math.min(W - hw, Math.max(hw, cx));
+    cy = hh * 2 >= H ? H / 2 : Math.min(H - hh, Math.max(hh, cy));
+  }
+  function draw() {
+    raf = 0; clamp();
+    const w = stage.clientWidth * s, h = stage.clientHeight * s;
+    svg.setAttribute('viewBox', `${cx - w / 2} ${cy - h / 2} ${w} ${h}`);
+  }
+  const req = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  function zoomAt(px, py, f) {                     // keep the point under (px, py) fixed
+    const r = stage.getBoundingClientRect();
+    const ux = cx + (px - r.left - r.width / 2) * s, uy = cy + (py - r.top - r.height / 2) * s;
+    const ns = Math.min(fit(), Math.max(fit() / MAXZ, s / f));
+    cx = ux - (ux - cx) * ns / s; cy = uy - (uy - cy) * ns / s; s = ns; req();
+  }
+  function home() { s = fit(); cx = W / 2; cy = H / 2; req(); }
+  home(); draw();
+  addEventListener('resize', req);
+  stage.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015))); }, { passive: false });
+  const pts = new Map(); let pinch = null, lastTap = 0;
+  stage.addEventListener('pointerdown', e => {
+    stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); stage.classList.add('drag');
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+    if (e.pointerType === 'touch' && pts.size === 1) {
+      const now = Date.now(); if (now - lastTap < 300) zoomAt(e.clientX, e.clientY, 2.5); lastTap = now;
+    }
+  });
+  stage.addEventListener('pointermove', e => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    if (pts.size === 1) { cx -= (e.clientX - p.x) * s; cy -= (e.clientY - p.y) * s; req(); }
+    else if (pts.size === 2) {
+      const [a0, b0] = [...pts.values()]; const mx0 = (a0.x + b0.x) / 2, my0 = (a0.y + b0.y) / 2;
+      p.x = e.clientX; p.y = e.clientY;
+      const [a, b] = [...pts.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      cx -= (mx - mx0) * s; cy -= (my - my0) * s;
+      if (pinch) zoomAt(mx, my, d / pinch); pinch = d; return;
+    }
+    p.x = e.clientX; p.y = e.clientY;
+  });
+  const up = e => { pts.delete(e.pointerId); pinch = null; if (!pts.size) stage.classList.remove('drag'); };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  stage.addEventListener('dblclick', e => zoomAt(e.clientX, e.clientY, 2.5));
+  const mid = () => { const r = stage.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  document.getElementById('zin').onclick = () => zoomAt(...mid(), 2);
+  document.getElementById('zout').onclick = () => zoomAt(...mid(), 0.5);
+  document.getElementById('home').onclick = home;
+})();
+</script>
+</body>
+</html>
