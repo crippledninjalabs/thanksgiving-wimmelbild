@@ -1,0 +1,10 @@
+# Review feedback round 1 (from headless screenshots at 1600x1000)
+Good work overall — keep the architecture and style. Fix these:
+1. Cybercab (cell 7): at some times the car leaves the track (e.g. t≈7.1 it sits outside the left end of the oval). Keep it exactly on the track centreline the whole lap. Make it read more like a Cybercab: 2-door, smooth teardrop/fastback roof, no B-pillar break, light bar front/back. Scale the car slightly smaller as it goes along the far (top) side to suggest depth, and flip it to face its direction of travel.
+2. Cybertruck (cell 6): the garage's right door pillar is drawn ON TOP of the truck as it rolls out, and the truck looks cut in half. Fix draw order (door opening interior → truck → front frame only where it's in front, or simply have the truck emerge cleanly from the opening). Make the silhouette more unmistakably Cybertruck: one straight line from the front nose rising to a single peak above the windshield, then one straight line down to the tailgate; flat stainless panels; light bar across the front.
+3. Inter-cell conveyors currently sit at the very TOP corners of the cells, while the in-cell belts are at the bottom, so items don't visibly flow into/out of machines. Where practical, route the linking conveyors/chutes so payloads visibly drop or feed into an in-cell belt or hopper (a short chute or vertical drop is fine). The themed payloads should appear to come from/arrive at something.
+4. Paint booth (cell 3) is completely empty for a long stretch of the loop; stagger so there is almost always a body visible somewhere in or near the booth.
+5. Elon: slightly stronger tells — a bit larger swept-back dark hair shape and make sure he is clearly in the black T-shirt; keep same scale as workers. He's fine walking between rows.
+6. Add an inline data-URI favicon (or <link rel="icon" href="data:,">) to stop the 404 console error.
+7. Make sure nothing else regresses: loop still seamless at LOOP period, no console errors, __setTime/__setTheme/?theme= still work.
+Re-check with your headless screenshots, then print a brief summary of what changed and any remaining rough spots.

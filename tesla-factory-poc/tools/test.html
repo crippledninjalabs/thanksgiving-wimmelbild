@@ -1,0 +1,20 @@
+<!doctype html><title>pending</title><pre id="out"></pre>
+<iframe id="f" src="../index.html?theme=thanksgiving" width="800" height="500"></iframe>
+<script>
+const out = [];
+const f = document.getElementById('f');
+f.onload = () => setTimeout(() => {
+  const w = f.contentWindow;
+  w.addEventListener('error', (e) => out.push('ERR ' + e.message));
+  out.push('startTheme=' + w.document.getElementById('theme-btn').textContent);
+  out.push('setTheme(default)=' + w.__setTheme('default'));
+  out.push('setTheme(bogus)=' + w.__setTheme('bogus'));
+  w.__setTime(5.5);
+  w.document.getElementById('theme-btn').click();
+  out.push('afterClick=' + w.document.getElementById('theme-btn').textContent);
+  w.document.getElementById('theme-btn').click();
+  out.push('afterClick2=' + w.document.getElementById('theme-btn').textContent);
+  w.__setTime(null);
+  setTimeout(() => { out.push('reloaded=' + (w.performance.navigation.type)); document.getElementById('out').textContent = out.join('\n'); document.title = 'done'; }, 300);
+}, 300);
+</script>

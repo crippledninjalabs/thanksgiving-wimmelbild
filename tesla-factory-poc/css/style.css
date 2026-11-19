@@ -1,0 +1,10 @@
+html, body { margin: 0; height: 100%; background: #fff; overflow: hidden; }
+body { display: flex; align-items: center; justify-content: center; }
+#scene { display: block; }
+#theme-btn {
+  position: fixed; top: 10px; left: 10px;
+  font: 600 12px "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding: 6px 10px; border: 1.5px solid #7a828a; border-radius: 6px;
+  background: #fff; color: #3a4148; cursor: pointer; opacity: 0.85;
+}
+#theme-btn:hover { opacity: 1; background: #f3f5f7; }
