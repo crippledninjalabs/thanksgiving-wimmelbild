@@ -9,11 +9,11 @@
 
   A.total = (segs) => segs.reduce((a, s) => a + s.d, 0);
   const at = (segs, i, tl) => segs[i].f(TF.clamp(tl / segs[i].d, 0, 1), tl);
-  A.run = (segs, tau, fade = 0.25) => {
+  A.run = (segs, tau, fade = 0.25, cyclic = true) => {
     let t0 = 0, i = 0;
     for (; i < segs.length - 1 && tau >= t0 + segs[i].d; i++) t0 += segs[i].d;
     const tl = tau - t0, st = at(segs, i, tl);
-    if (tl < fade) {
+    if (tl < fade && (cyclic || i > 0)) {
       const j = (i - 1 + segs.length) % segs.length, prev = at(segs, j, segs[j].d);
       st.pose = R.blend(prev.pose, st.pose, R.smooth(tl / fade));
     }

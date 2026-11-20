@@ -28,7 +28,9 @@
   // 6B weld windows (tau within the 6B pitch) and 6C fitting times
   const WELD = [[2.3, 5.0], [2.5, 5.0], [2.8, 5.2], [3.2, 7.6]];
   line.WELD = WELD; line.SEAMS = SEAMS; line.PIECE = PIECE;
-  line.FIT = { rearDoor: 2.2, frontDoor: 2.2, hood: 6.1, boltRear: 3.6, boltFront: 3.4, boltHood: 7.4 };
+  // 6C: ONE Optimus hangs + bolts rear door, front door, hood in sequence (round 4)
+  line.FIT = { rearDoor: 1.2, frontDoor: 4.2, hood: 6.9, boltRear: 2.0, boltFront: 5.0, boltHood: 7.8 };
+  line.TAKE = { rearDoor: 0.4, frontDoor: 3.4, hood: 6.0 };   // tau when each part leaves the 6C hanger
   const COL = { frame: '#aeb5bc', steel: '#bcc3ca', red: TF3.style.vehicles.paints.red, open: '#e6e9ed', win: '#7d858d', out: '#5d656d', bead: '#3f454b' };
 
   // ---------- car chain (pure function of t) ----------
@@ -85,16 +87,16 @@
   const H6C = 102;   // drop at 6C
   const sP = 1640 - HX0, sE = 1705 - HX0, sB = 2080 - HX0, sC = 2583 - HX0;   // press slot, 6A-east winch, 6B buffer, 6C drop
   const hsched = TF.track.schedule([[0, sP, 0, 0], [5.3, sP, 0, 0], [6.0, sE, 0, 0], [6.8, sE, 0, 1], [7.2, sE, 0, 1], [7.9, sE, 0, 0],
-    [8.1, sE, 0, 0], [10.0, sB, 0, 0], [20.0, sB, 0, 0], [21.0, sC, 0, 0], [22.4, sC, 0, 0], [23.4, sC, H6C, 0], [29.4, sC, H6C, 0], [30.4, sC, 0, 0],
-    [31.0, 2700 - HX0, 0, 0], [31.5, 2700 - HX0 + 6, 0, 0], [35.0, hp.total - 6, 0, 0], [35.5, hp.total, 0, 0],   // slow rail switch at the ends
+    [8.1, sE, 0, 0], [10.0, sB, 0, 0], [20.0, sB, 0, 0], [21.0, sC, 0, 0], [22.4, sC, 0, 0], [23.4, sC, H6C, 0], [30.2, sC, H6C, 0], [31.0, sC, 0, 0],
+    [31.5, 2700 - HX0, 0, 0], [32.0, 2700 - HX0 + 6, 0, 0], [35.2, hp.total - 6, 0, 0], [35.6, hp.total, 0, 0],   // slow rail switch at the ends
     [36, hp.total + sP, 0, 0]], 36);
   line.hanger = (t, i) => { // i = 0, 1, 2 (offset 12 s)
     const j = TF.mod(t - i * 12, 36), st = hsched(j), [x, y] = hp.at(st.s);
     const bar = y + 7 + st.k[0], winch = st.k[1];
     return { j, x, y, bar, drop: st.k[0], winch,
       parts: { // which parts hang on this hanger at time j
-        rearDoor: j >= 2.0 && j < 24.3, frontDoor: j >= 2.0 && j < 24.3,
-        hood: j >= 4.6 && j < 28.6, quarter: j >= 4.6 && j < 7.0 },
+        rearDoor: j >= 2.0 && j < 24 + line.TAKE.rearDoor, frontDoor: j >= 2.0 && j < 24 + line.TAKE.frontDoor,
+        hood: j >= 4.6 && j < 24 + line.TAKE.hood, quarter: j >= 4.6 && j < 7.0 },
       pos: (name) => [x + HOFF[name], name === 'hood' ? bar + 37.5 : name === 'quarter' ? bar + 14 + winch * 125 + 20 : bar + 30] };
   };
   // parts sliding from the panel press (on the 6A mezzanine) onto the hooks
@@ -187,36 +189,44 @@
       }
     } });
 
-  // ---------- PT capsule network: supply riser + ceiling trunk with drop tubes, return trunk + riser ----------
-  // Each route is a fleet of capsules (journey 24 s) leaving the dock on its own slot so risers never collide.
-  const ty = hY(L.rail.tube), tyR = hY(L.rail.tubeR), RS = L.core.PTx - 6, RR = L.core.PTx + 7;
+  // ---------- PT capsule network (round 4: 6B/6C drops come up through the floor so they never cross the hanging
+  // doors; only the 6D sealer line uses the ceiling trunk). Supply + return tubes; each route a fleet (journey 24 s)
+  // leaving the dock on its own slot so the risers never collide. ----------
+  const ty = hY(L.rail.tube), tyR = hY(L.rail.tubeR), RS = L.core.PTx - 6, RR = L.core.PTx + 7, yT = yF + 5, yTR = yF + 11;
   line.FEEDER = [2338, hY(1.45)];
+  const FD = line.FEEDER, GY = hY(2.95), MX = 1958;
+  line.TIPMAG = [MX, GY + 9];
   const ROUTES = line.PT = {
-    tips: { x: 2030, end: hY(2.95) - 16, t0: 9.0, period: 12, col: '#c27a3a' },            // spare weld tips -> 6B tip dresser
-    bolts: { x: line.FEEDER[0], end: line.FEEDER[1] - 8, t0: 0.5, period: 12, col: '#3f8fd0' }, // bolts -> 6C feeder
-    sealer: { x: 2918, end: hY(3.18), t0: 4.5, period: 24, col: '#8a939b' },         // sealer/primer cartridges -> 6D kitchen
+    tips: { t0: 9.0, period: 12, col: '#c27a3a',                                    // spare weld tips -> 6B gantry tip magazine
+      sup: [[RS, DOCKY], [RS, yT], [1947, yT], [1947, GY + 12], [MX - 4, GY + 12]], ret: [[MX - 4, GY + 12], [1941, GY + 18], [1941, yTR], [RR, yTR], [RR, DOCKY]] },
+    bolts: { t0: 0.5, period: 12, col: '#3f8fd0',                                   // bolts -> 6C feeder
+      sup: [[RS, DOCKY], [RS, yT], [2350, yT], [2350, FD[1] + 4]], ret: [[2350, FD[1] + 4], [2357, FD[1] + 14], [2357, yTR], [RR, yTR], [RR, DOCKY]] },
+    sealer: { t0: 4.5, period: 24, col: '#8a939b',                                  // sealer/primer cartridges -> 6D kitchen
+      sup: [[RS, DOCKY], [RS, ty], [2918, ty], [2918, hY(3.18)]], ret: [[2918, hY(3.18)], [2918, tyR], [RR, tyR], [RR, DOCKY]] },
   };
+  const legKeys = (pts, t0, riserFirst) => { const p = TF.track.path(pts), keys = [[t0, 0]]; let t = t0;
+    for (let i = 1; i < pts.length; i++) { const len = p.cum[i] - p.cum[i - 1], first = riserFirst ? i === 1 : i === pts.length - 1;
+      t += first && len > 600 ? 3.0 : Math.max(0.25, len / 600); keys.push([t, p.cum[i]]); }
+    return { p, keys, end: t }; };
   for (const k in ROUTES) {
-    const r = ROUTES[k], up = 3.0, trunk = (r.x - RS) / 600, drop = 0.5, open = 0.8;
-    r.sup = TF.track.path([[RS, DOCKY], [RS, ty], [r.x, ty], [r.x, r.end]]);
-    r.ret = TF.track.path([[r.x, r.end], [r.x, tyR], [RR, tyR], [RR, DOCKY]]);
-    const a1 = r.t0 + up, a2 = a1 + trunk, a3 = a2 + drop, o1 = a3 + open, b1 = o1 + 0.4, b2 = b1 + trunk, b3 = b2 + up;
-    r.open = [a3, o1]; r.arrive = a3;
-    const c = r.sup.cum, d = r.ret.cum;
+    const r = ROUTES[k], open = 0.8;
+    r.x = r.sup[r.sup.length - 1][0]; r.end = r.sup[r.sup.length - 1][1];
+    const S1 = legKeys(r.sup, r.t0, true), o1 = S1.end + open, R1 = legKeys(r.ret, o1, false);
+    r.open = [S1.end, o1]; r.arrive = S1.end; r.sup = S1.p; r.ret = R1.p;
+    const supK = S1.keys.concat([[o1, S1.p.total]]), retK = R1.keys, b3 = R1.end;
     r.at = (t, i) => { // -> {path, s, v} or null when at the dock
-      const j = TF.mod(t - r.t0 - i * r.period, 24) + r.t0, J = j >= 24 + r.t0 ? j - 24 : j;
+      const J = TF.mod(t - r.t0 - i * r.period, 24) + r.t0;
       const seg = (path, keys) => { const f = TF.track.schedule(keys, 1e9); return { path, s: f(J).s, v: (f(J + 0.02).s - f(J - 0.02).s) / 0.04 }; };
-      if (J < r.t0 || J >= b3) return null;
-      if (J < o1) return seg(r.sup, [[r.t0, 0], [a1, c[1]], [a2, c[2]], [a3, c[3]], [o1, c[3]]]);
-      return seg(r.ret, [[o1, 0], [b1, d[1]], [b2, d[2]], [b3, d[3]]]);
+      if (J >= b3) return null;
+      return J < o1 ? seg(r.sup, supK) : seg(r.ret, retK);
     };
   }
   line.BOLTS_IN = ROUTES.bolts.arrive + 0.2;
   TF.transport({ id: 'PT-6', owner: '6C', period: 24, layer: 'back', box: { x: RS - 20, y: ty - 20, w: 2940 - RS + 40, h: L.G - ty + 20 },
     draw(ctx, t, theme, lod) {
       const pipe = (pts) => TF.tube.draw(ctx, TF.track.path(pts), lod);
-      pipe([[RS, DOCKY], [RS, ty], [ROUTES.sealer.x, ty]]); pipe([[RR, DOCKY], [RR, tyR], [ROUTES.sealer.x, tyR]]);
-      for (const k in ROUTES) pipe([[ROUTES[k].x, ty], [ROUTES[k].x, ROUTES[k].end]]);
+      pipe([[RS, DOCKY], [RS, ty]]); pipe([[RR, DOCKY], [RR, tyR]]);
+      for (const k in ROUTES) { const r = ROUTES[k]; pipe(r.sup.pts.slice(1)); pipe(r.ret.pts.slice(0, -1)); }
       if (lod === 'far') return;
       for (const k in ROUTES) { const r = ROUTES[k]; for (let i = 0; i < 24 / r.period; i++) { const c = r.at(t, i); if (c && c.s > 1) TF.tube.capsule(ctx, c.path, c.s, c.v, lod, theme.decor.capsuleDecal, r.col); } }
     } });

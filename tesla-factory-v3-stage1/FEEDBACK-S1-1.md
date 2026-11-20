@@ -13,3 +13,8 @@
 ## Reid 2:36 PM (round 3)
 1. Whole floor: add more activity but keep it SUBTLE (background life, not new main flows). Examples: blinking status lights, small sparks/steam/fume wisps, a tool cart rolling, an Optimus inspecting or sweeping, cables swaying, screen flickers. Must not clutter or compete with the main line.
 2. Early-stage vehicles must look like real unfinished cars, not an unpainted outline being filled in. Show body-in-white: bare-metal shading, weld seams and spot-weld dots, open structure (pillars, roof rails, floor pan, crossmembers), real openings where doors/hood/glass are missing, no wheels until fitted. Each station visibly adds real parts.
+
+## Reid 2:49 PM (round 4)
+1. Optimus robots need more movement. 6C: ONE Optimus (moving a bit faster) takes the rear door, front door and hood off the hanger and hangs/bolts all three within the cycle; remove Optimus B and the background sweeper. Keep it always busy and natural (walk, reach, carry, bolt).
+2. Check every other Optimus on floor 6 (6A climber/carrier, 6B fitter, 6D ladder, 6E QC) for idle time; merge or retime so none stands around. Also review the plan for all other floors/ship/outside (v3-plan/FACTORY-MAP.md) and update it so later stages use fewer, busier Optimus.
+3. Cleanup: 6B weld-robot cables must not cross the car frame; hanging doors must not overlap back-wall ducts in 6A-6C; fill 6E upper right to match the density of the other rooms.

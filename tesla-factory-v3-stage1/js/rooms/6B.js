@@ -9,9 +9,9 @@
   const ln = TF.line6, yF = ln.yF, hY = ln.hY, X = ln.S[1];
   const room = L.roomById('6B');
   const GY = hY(2.95);                                    // gantry beam underside
-  const MAG = [ln.PT.tips.x, GY + 9];                     // tip magazine / dresser on the gantry
+  const MAG = ln.TIPMAG;                                  // tip magazine / dresser by the gantry west leg (fed from below)
   const ARMS = [
-    { j: 0, base: [X - 0.3 * M, GY], hang: true, rest: [X - 0.2 * M, hY(2.15)], toolAng: Math.PI / 2 + 0.25, bend: -1, dress: [0.8, 1.6] },
+    { j: 0, base: [X - 0.3 * M, GY], hang: true, rest: [X - 0.2 * M, hY(2.15)], toolAng: Math.PI / 2 + 0.25, bend: -1 },
     { j: 1, base: [X - 1.75 * M, GY], hang: true, rest: [X - 1.7 * M, hY(2.15)], toolAng: Math.PI / 2 - 0.2, bend: 1, dress: [5.6, 6.4] },
     { j: 2, base: [X - 2.5 * M, yF], rest: [X - 2.15 * M, hY(1.15)], toolAng: 0.1, bend: -1 },
     { j: 3, base: [X + 0.1 * M, yF], rest: [X + 0.2 * M, hY(1.05)], toolAng: Math.PI / 2 - 0.1, bend: 1 },
@@ -33,14 +33,18 @@
   const drawArm = (ctx, a, t, lod) => {
     const r = tipOf(a, t);
     const j = K.arm(ctx, a.base, r.tip, { l1: 38, l2: 34, toolAng: a.toolAng, bend: a.bend, hang: a.hang });
-    if (lod !== 'far') K.cable(ctx, [a.base[0] + (a.hang ? 6 : -8), a.base[1] + (a.hang ? 2 : -6)], j.wrist, t, 6, a.hang ? 8 : -6, 1.5, '#3f4851', 1.2);   // dress pack
+    if (lod !== 'far') {   // dress pack strapped along the links (never hangs across the car)
+      const off = (p, q, s) => { const dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy) || 1; return [-dy / l * s, dx / l * s]; };
+      const s1 = off(j.shoulder, j.elbow, a.bend * 3.2), s2 = off(j.elbow, j.wrist, a.bend * 2.6);
+      D.line(ctx, [[a.base[0], a.base[1]], [j.shoulder[0] + s1[0], j.shoulder[1] + s1[1]], [j.elbow[0] + (s1[0] + s2[0]) / 2, j.elbow[1] + (s1[1] + s2[1]) / 2], [j.wrist[0] + s2[0], j.wrist[1] + s2[1]]], '#3f4851', 1.2);
+    }
     if (r.on && lod !== 'far') { K.sparks(ctx, r.tip[0], r.tip[1], t, lod, 0.8); K.wisp(ctx, r.tip[0], r.tip[1] - 4, t, 1.5, lod, 0.16, '#cfd5db', 22); }
     if (r.dressing && lod === 'near') K.sparks(ctx, r.tip[0], r.tip[1], t, lod, 0.35);
   };
   const welding = (t) => ARMS.some((a) => tipOf(a, t).on);
   const beadsDone = (t) => { const car = ln.carAtStation(t, 1); return car && car.tau < 8.5 ? car.beads.filter((b) => b >= 1).length : 0; };
-  const magLevel = (t) => { const u = TF.mod(t, 12), op = TF.mod(ln.PT.tips.open[1], 12);   // capsule brings 2 tips, each gantry robot uses 1
-    return 0.5 - 0.15 * TF.ramp(u, 0.8, 1.6) - 0.15 * TF.ramp(u, 5.6, 6.4) + 0.3 * TF.ramp(u, op, op + 0.3) - (u < op ? 0 : 0); };
+  const magLevel = (t) => { const u = TF.mod(t, 12), op = TF.mod(ln.PT.tips.open[1], 12);   // spare tips in, quarter-top robot dresses once per car
+    return 0.4 + 0.2 * TF.ramp(u, op, op + 0.3) - 0.2 * TF.ramp(u, 5.6, 6.4); };   // capsule tips in, one used per car (op < 5.6)
 
   // fitter Optimus (12 s, starts at 11.3): fixture -> car quarter, back to the fixture
   const FX = 1902, PX = ln.S[1] + ln.PIECE.quarter.c[0] * M - 0.45 * M, F0 = 11.3, QF = ln.QFIX;
@@ -56,7 +60,13 @@
     A.turn(0.3, PX, 1),
     A.walk(0.8, PX, FX, { step: 0.45 }),
   ];
-  fsegs.push(A.hold(12 - A.total(fsegs), FX, -1));
+  // round 4: no idle — wipe the fixture locating pins, walk down the car and check the sill bead, walk back
+  const IX = 2010, wipe = (tl) => A.reach([0.26 + 0.07 * Math.sin(tl * 9), 0.64], [0.12, 0.8], { lean: 0.42, hipY: 0.8, head: 0.4, gripN: 0.6, angN: -0.6 });
+  const insp = (u) => A.reach([0.48 + 0.3 * u, 0.55], [0.3, 0.9], { lean: 0.45, hipY: 0.78, head: 0.45, gripN: 0.2, angN: -0.4 });
+  fsegs.push(A.hold(2.05, FX, -1, (tl) => wipe(tl)), A.turn(0.3, FX, -1), A.walk(1.3, FX, IX, { step: 0.55 }),
+    A.keyed(1.6, IX, 1, [[0, A.stand()], [0.2, insp(0)], [0.9, insp(1)], [1, A.stand()]]),
+    A.turn(0.3, IX, 1), A.walk(1.3, IX, FX, { step: 0.55 }));
+  fsegs.push(A.hold(12 - A.total(fsegs), FX, -1, (tl) => Object.assign(A.idle(tl), { head: -0.1 })));
   const fitter = (t) => A.run(fsegs, TF.mod(t - F0, 12));
   // panel position while the fitter holds it (11.7 .. 2.0 next pitch)
   const panelOnFitter = (t) => { const u = TF.mod(t - F0, 12); return u >= 0.4 && u < 2.7; };
@@ -74,9 +84,11 @@
       TF.rollers.draw(ctx, 1840, 2310, ln.rollTop, yF, ln.rollerAng(t), lod);
       // fume extractor: hood near the weld zone, duct up the back wall to the ceiling, fan runs while welding
       const DX = 2262;
-      D.rect(ctx, DX - 9, L.ceilY(6), 18, hY(1.9) - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
+      // (round 4: stays below the hanging-door path — rises to 2.95 m, then runs east into the wall chase)
+      D.rect(ctx, DX - 9, hY(2.95), 18, hY(1.9) - hY(2.95), '#dfe4e8', '#9aa3ab', 1);
+      D.rect(ctx, DX - 9, hY(2.95), 2310 - DX + 9, 0.3 * M, '#dfe4e8', '#9aa3ab', 1);
       D.poly(ctx, [[DX - 9, hY(1.9)], [DX + 9, hY(1.9)], [DX + 4, hY(1.4)], [DX - 26, hY(1.4)]], '#cfd5db', '#9aa3ab', 1);
-      if (lod !== 'far') { const sp = K.spin(t, 12, 0.4, 2.5, [[2.3, 7.6]]); D.fan(ctx, DX, hY(2.55), 11, sp); D.fan(ctx, DX, hY(4.05), 11, sp + 0.4); }
+      if (lod !== 'far') { const sp = K.spin(t, 12, 0.4, 2.5, [[2.3, 7.6]]); D.fan(ctx, DX, hY(2.35), 10, sp); }
       // portal gantry over the station (robots hang from it) + tip magazine fed by the PT drop tube
       D.rect(ctx, X - 2.95 * M, GY - 6, 5.9 * M, 6, '#9aa3ab', '#6d757d', 1);
       for (const x of [X - 2.95 * M, X + 2.75 * M]) D.rect(ctx, x, GY, 8, yF - GY, '#b3bac1', '#7b848c', 0.8);

@@ -24,11 +24,23 @@
   const pourPose = (u) => { const p = JSON.parse(JSON.stringify(top.p)), f = A.local(OX, yF - top.ay * M, 1, FUNNEL[0], FUNNEL[1]);
     p.handN = [f[0] - 0.02, f[1] + 0.22 - 0.06 * u]; p.gripN = 1; p.handAngN = 0.2 + 0.9 * u; p.head = 0.25; return p; };
   const basketPose = (k) => { const b = A.local(OX, yF, -1, BASKET[0], BASKET[1]); return A.reach([b[0], b[1] + 0.02 + k * 0.05], null, { lean: 0.15, gripN: 0.9 }); };
+  // round 4 — no idle: after returning the empties the Optimus pulls a viscosity sample at the tank tap, reads it,
+  // returns it, wipes the drip tray, then turns and reaches for the next basket as it drops in
+  const TAP = A.local(OX, yF, 1, 2862, hY(0.45));
+  const cupUp = A.reach([0.26, 1.38], [0.1, 1.0], { head: -0.2, gripN: 1 });
+  const tapP = A.reach([TAP[0], TAP[1] + 0.05], [TAP[0] - 0.12, TAP[1] + 0.25], { lean: 0.45, hipY: 0.78, head: 0.4, gripN: 1 });
+  const tray = (tl) => A.reach([0.3 + 0.1 * Math.sin(tl * 6), 0.32], [0.12, 0.55], { lean: 0.55, hipY: 0.66, head: 0.5, gripN: 0.6, angN: -0.6 });
+  const readyB = (() => { const b = A.local(OX, yF, -1, BASKET[0], BASKET[1] - 18); return A.reach([b[0] - 0.05, b[1]], [b[0] - 0.2, b[1] - 0.05], { gripN: 0.2, gripF: 0.2, head: -0.2 }); })();
+  const tail = [A.turn(0.3, OX, -1), A.keyed(0.7, OX, 1, [[0, A.stand()], [1, tapP]]), A.keyed(2.0, OX, 1, [[0, tapP], [0.3, cupUp], [1, cupUp]]),
+    A.keyed(0.6, OX, 1, [[0, cupUp], [1, tapP]]), A.hold(2.6, OX, 1, (tl) => tray(tl)), A.keyed(0.4, OX, 1, [[0, tray(2.6)], [1, A.stand()]]),
+    A.turn(0.3, OX, 1), A.keyed(1.5, OX, -1, [[0, A.stand()], [1, readyB]])];               // 15.6 .. 24.0
+  const cupHeld = (t) => { const u = TF.mod(t, 24); return u >= 16.6 && u < 19.2; };
   const optimus = (t) => {
     const u = TF.mod(t, 24);
     const seg = (a, b) => u >= a && u < b;
-    if (u < 0.2 || u >= 15.6) return { x: OX, face: -1, pose: A.idle(u), ay: 0 };
-    if (seg(0.2, 0.7)) return { x: OX, face: -1, pose: R.blend(A.idle(u), basketPose(0), TF.ramp(u, 0.2, 0.7)), ay: 0 };
+    if (u >= 15.6) { const st = A.run(tail, u - 15.6, 0.25, false); st.ay = 0; return st; }
+    if (u < 0.2) return { x: OX, face: -1, pose: readyB, ay: 0 };
+    if (seg(0.2, 0.7)) return { x: OX, face: -1, pose: R.blend(readyB, basketPose(0), TF.ramp(u, 0.2, 0.7)), ay: 0 };
     if (seg(0.7, 1.2)) return { x: OX, face: -1, pose: R.blend(basketPose(0), A.reach([0.3, 1.0], null, { gripN: 0.9 }), TF.ramp(u, 0.7, 1.2)), ay: 0 };
     if (seg(1.2, 1.5)) { const k = TF.lin(u, 1.2, 1.5); return { x: OX, face: k < 0.5 ? -1 : 1, squash: 0.85 * (1 - Math.abs(Math.cos(Math.PI * k))), pose: A.reach([0.3, 1.0], null, { gripN: 0.9 }), ay: 0 }; }
     if (seg(1.5, 1.9)) { const a = onL(0, 0); return { x: OX, face: 1, pose: R.blend(A.reach([0.3, 1.0], null, { gripN: 0.9 }), a.p, TF.ramp(u, 1.5, 1.9)), ay: 0 }; }
@@ -142,6 +154,9 @@
       if (sp) { ctx.globalAlpha = 0.3; D.poly(ctx, [[mx - 9, hY(0.8)], [mx - 22, hY(1.0)], [mx - 22, hY(0.58)]], '#e04848'); ctx.globalAlpha = 1; }
       // ladder Optimus + cans
       const o = optimus(t), y = yF - o.ay * M, fig = A.draw(ctx, o, y);
+      if (cupHeld(t)) { const w = fig.w(fig.sk.wristN), up = TF.mod(t, 24) > 17.0 && TF.mod(t, 24) < 18.9;
+        D.poly(ctx, [[w[0] + 1, w[1] - 4], [w[0] + 7, w[1] - 4], [w[0] + 6, w[1] + 2], [w[0] + 2, w[1] + 2]], '#e5e7eb', '#5d656d', 0.6);
+        if (up && lod === 'near') D.line(ctx, [[w[0] + 4, w[1] + 2], [w[0] + 4, w[1] + 6 + 4 * Math.abs(Math.sin(t * 3))]], '#c8202e', 0.9); }   // viscosity cup draining
       if (cansHeld(t)) {
         const w = fig.w(fig.sk.wristN), tilt = o.pour ? -o.face * 1.1 * TF.pulse(TF.mod(t, 24), 7.0, 8.8, 0.4) : 0;
         ln.drawCan(ctx, w[0] - 6, w[1] + 15, TF.mod(t, 24) < 7.4, lod, tilt); ln.drawCan(ctx, w[0] + 6, w[1] + 15, TF.mod(t, 24) < 8.2, lod, tilt);

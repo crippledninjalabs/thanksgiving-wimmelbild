@@ -27,31 +27,49 @@
     return { x, tilt, fill, pouring: u >= 11.6 || u < 0.4, filling: u >= 9 && u < 10 };
   };
   const melt = (t) => { const u = TF.mod(t, 24); return 2 * TF.ramp(u, 10, 13) - TF.ramp(u, 9, 10) - TF.ramp(u, 21, 22); };
-  const gauge = (t) => { const u = TF.mod(t, 24); return u >= 10.6 && u < 12.6 ? TF.lerp(0.78, 0.2, TF.ramp(u, 10.6, 12.6)) : 0.2 + 0.58 * TF.mod(u - 12.6, 24) / 22; };
-  const valveAng = (t) => Math.PI * 2 * TF.ramp(TF.mod(t, 24), 10.8, 12.4);
+  const gauge = (t) => { const u = TF.mod(t, 24); return u >= 14.0 && u < 16.0 ? TF.lerp(0.78, 0.2, TF.ramp(u, 14.0, 16.0)) : 0.2 + 0.58 * TF.mod(u - 16.0, 24) / 22; };
+  const valveAng = (t) => Math.PI * 2 * TF.ramp(TF.mod(t, 24), 14.2, 15.8);
   const strokes = (t) => { const u = TF.mod(t, 12); return Math.max(TF.pulse(u, 0.5, 2.0, 0.5), TF.pulse(u, 3.0, 4.5, 0.5)); };
 
-  // climber (24 s): idle -> climb one loop -> turn valve -> climb down -> idle
+  // climber (24 s, round 4 — no idle): presses the press cycle button and watches the shot, wipes the shot sleeve,
+  // inspects the fresh casting, walks to the furnace and pushes the ingot in, climbs to the coolant valve and turns
+  // it (gauge back to green), climbs down and walks back to the press panel.
   const climb = C.climb(0.17, 0.3);
   const onLadder = (ph) => { const p = climb.sample(Math.min(ph, 0.99999)); const ay = p.advanceY; p.props = {}; return { p, ay }; };
   const valvePose = (u) => { // u 0..1 around the wheel
     const top = onLadder(1), p = JSON.parse(JSON.stringify(top.p));
-    const a = valveAng(10.8 + u * 1.6) + 0.6, c = A.local(CLIMB_X, yF - top.ay * M, -1, VALVE[0], VALVE[1]);
+    const a = valveAng(14.2 + u * 1.6) + 0.6, c = A.local(CLIMB_X, yF - top.ay * M, -1, VALVE[0], VALVE[1]);
     p.handN = [c[0] + Math.cos(a) * 0.1, c[1] + Math.sin(a) * 0.1]; p.gripN = 0.9; p.handAngN = 2.6; p.curlN = -1; p.head = -0.15;
     return { p, ay: top.ay };
   };
-  const climber = (t) => {
-    const u = TF.mod(t, 24);
-    let st;
-    if (u < 7.8 || u >= 15.4) st = { pose: A.idle(u), ay: 0 };
-    else if (u < 8.2) { const a = onLadder(0); st = { pose: R.blend(A.idle(u), a.p, TF.ramp(u, 7.8, 8.2)), ay: 0 }; }
-    else if (u < 10.6) { const a = onLadder((u - 8.2) / 2.4); st = { pose: a.p, ay: a.ay }; }
-    else if (u < 12.6) { const k = TF.ramp(u, 10.6, 10.9) - TF.ramp(u, 12.3, 12.6), v = valvePose(TF.lin(u, 10.8, 12.4)), top = onLadder(1);
-      st = { pose: R.blend(top.p, v.p, k), ay: top.ay }; }
-    else if (u < 15.0) { const a = onLadder(1 - (u - 12.6) / 2.4); st = { pose: a.p, ay: a.ay }; }
-    else { const a = onLadder(0); st = { pose: R.blend(a.p, A.idle(u), TF.ramp(u, 15.0, 15.4)), ay: 0 }; }
-    return { x: CLIMB_X, face: -1, pose: st.pose, y: yF - st.ay * M };
-  };
+  const XP = 1580, XI = 1368, BTN = [1565, hY(1.15)];
+  const ingotX = (t) => { const iu = TF.mod(t, 24); return iu < 7.6 ? TF.lerp(INGOT_FROM, INGOT_TABLE, TF.ramp(iu, 6.9, 7.6)) : iu < 9.2 ? INGOT_TABLE : TF.lerp(INGOT_TABLE, 1440, TF.ramp(iu, 9.2, 10.4)); };
+  const btnPose = (push) => A.reach(A.local(XP, yF, -1, BTN[0] - push * 2, BTN[1]), null, { gripN: 0.3, head: 0.15, angN: 0 });
+  const wipeSleeve = (tl) => A.reach([0.18 + 0.12 * Math.sin(tl * 8), 0.95], [0.05, 1.0], { lean: 0.3, hipY: 0.86, head: 0.35, gripN: 0.6, angN: -0.5 });
+  const inspect = (u) => A.reach([0.1 + 0.5 * u, 0.62], [0.0, 0.9], { lean: 0.42, hipY: 0.8, head: 0.45, gripN: 0.2, angN: -0.3 });
+  const pushPose = (t) => { const hx = Math.min(ingotX(t) - 15, 1395); return A.reach(A.local(XI, yF, 1, hx - 14, hY(0.5)), A.local(XI, yF, 1, hx - 18, hY(0.46)), { lean: 0.45, hipY: 0.74, head: 0.5, gripN: 0.4, gripF: 0.4, angN: 0, angF: 0 }); };
+  const ladSeg = (d, fn) => ({ d, f: (u, tl) => { const r = fn(u, tl); return { x: CLIMB_X, face: -1, pose: r.p, ay: r.ay }; } });
+  const csegs = [
+    A.hold(0.6, XP, -1, () => btnPose(1)),                                                 // 0.0  shot fired: hand on the button
+    A.keyed(1.2, XP, -1, [[0, btnPose(1)], [1, Object.assign(A.stand(), { head: 0.3 })]]), // 0.6  watch the plunger
+    A.hold(1.2, XP, -1, (tl) => wipeSleeve(tl)),                                           // 1.8  wipe the shot sleeve
+    A.turn(0.3, XP, -1), A.keyed(0.5, XP, 1, [[0, A.stand()], [1, inspect(0)]]),           // 3.0
+    A.keyed(2.0, XP, 1, [[0, inspect(0)], [1, inspect(1)]]),                               // 3.8  run a hand along the casting flange
+    A.keyed(0.3, XP, 1, [[0, inspect(1)], [1, A.stand()]]), A.turn(0.3, XP, 1),            // 5.8
+    A.walk(2.5, XP, XI, { step: 0.62 }), A.turn(0.3, XI, -1),                              // 6.4 .. 9.2
+    { d: 1.2, f: (u, tl) => ({ x: XI, face: 1, pose: pushPose(9.2 + tl) }) },              // 9.2  push the ingot into the furnace
+    A.keyed(0.3, XI, 1, [[0, pushPose(10.4)], [1, A.stand()]]),                            // 10.4
+    A.walk(0.3, XI, CLIMB_X, { step: 0.25 }), A.turn(0.3, CLIMB_X, 1),                     // 10.7 .. 11.3
+    ladSeg(0.3, (u) => ({ p: R.blend(A.stand(), onLadder(0).p, u), ay: 0 })),              // 11.3
+    ladSeg(2.4, (u) => onLadder(u)),                                                       // 11.6 climb
+    ladSeg(2.0, (u) => { const v = valvePose(TF.lin(14.0 + u * 2, 14.2, 15.8)), top = onLadder(1), k = TF.ramp(u, 0, 0.15) - TF.ramp(u, 0.85, 1);
+      return { p: R.blend(top.p, v.p, k), ay: top.ay }; }),                                // 14.0 valve
+    ladSeg(2.4, (u) => onLadder(1 - u)),                                                   // 16.0 down
+    ladSeg(0.3, (u) => ({ p: R.blend(onLadder(0).p, A.stand(), u), ay: 0 })),              // 18.4
+    A.turn(0.3, CLIMB_X, -1), A.walk(2.4, CLIMB_X, XP, { step: 0.62 }), A.turn(0.3, XP, 1), // 18.7 .. 21.7
+  ];
+  csegs.push(A.keyed(24 - A.total(csegs), XP, -1, [[0, A.stand()], [0.5, btnPose(0)], [1, btnPose(1)]]));   // 21.7 press at the die close
+  const climber = (t) => { const st = A.run(csegs, TF.mod(t, 24)); st.y = yF - (st.ay || 0) * M; return st; };
 
   // carrier (12 s): quarter panel from the hanger winch (6A east) -> D6AB -> onto the car in 6B
   // carrier (12 s): quarter panel from the hanger winch (6A east) -> D6AB -> the quarter-panel fixture in 6B,
@@ -60,13 +78,17 @@
   const carryUp = (pose, c = PANEL_C, k = 1) => R.layer(pose, { handN: [c[0] + 0.1, c[1] - 0.02], handF: [c[0] - 0.1, c[1] + 0.03], gripN: 0.9, gripF: 0.9,
     handAngN: 0.3, handAngF: 0.4, curlN: 1, curlF: 1, lean: (pose.lean || 0) + 0.08 }, ['handN', 'handF', 'gripN', 'gripF', 'handAngN', 'handAngF', 'curlN', 'curlF', 'lean'], k);
   const placeC = [0.42, 0.85], C0 = 10.4;
+  const deburr = (u) => A.reach([0.52 + 0.08 * u, 0.62 + 0.05 * Math.sin(u * 12)], [0.3, 0.85], { lean: 0.42, hipY: 0.8, head: 0.4, gripN: 1, angN: -0.2 });
+  const deburring = (t) => { const u = TF.mod(t, 12); return u >= 4.2 && u < 5.6; };
   const carrierSegs = [
     A.keyed(0.7, PLACE, 1, [[0, carryUp(A.stand())], [1, Object.assign(carryUp(A.stand(), placeC), { lean: 0.22, head: 0.15 })]]),
     A.keyed(0.15, PLACE, 1, [[0, Object.assign(carryUp(A.stand(), placeC), { lean: 0.22 })], [1, Object.assign(carryUp(A.stand(), placeC), { lean: 0.22, gripN: 0, gripF: 0 })]]),
     A.turn(0.3, PLACE, 1),
     A.walk(3.0, PLACE, PICK),
     A.turn(0.3, PICK, -1),
-    A.hold(3.55, PICK, 1),
+    A.hold(1.0, PICK, 1, (tl) => Object.assign(A.idle(tl), { head: 0.2 })),            // watch the press open
+    A.keyed(2.1, PICK, 1, [[0, A.stand()], [0.15, deburr(0)], [0.85, deburr(1)], [1, deburr(1)]]),   // deburr the casting's front flange
+    A.keyed(0.45, PICK, 1, [[0, deburr(1)], [1, A.stand()]]),
     A.keyed(0.6, PICK, 1, [[0, A.stand()], [1, Object.assign(carryUp(A.stand()), { gripN: 0.2, gripF: 0.2, head: -0.1 })]]),
     A.keyed(0.5, PICK, 1, [[0, Object.assign(carryUp(A.stand()), { gripN: 0.2, gripF: 0.2 })], [1, carryUp(A.stand())]]),
     ((w) => ({ d: w.d, f: (u, tl) => { const st = w.f(u, tl); st.pose = carryUp(st.pose); return st; } }))(A.walk(2.9, PICK, PLACE)),
@@ -108,13 +130,13 @@
     D.rect(ctx, wx, wy0, ww, wh, '#2b1b16');
     D.rect(ctx, wx, wy0 + wh * (1 - lv), ww, wh * lv, '#ff7a2a');
     if (mid) D.line(ctx, [[wx, wy0 + wh * (1 - lv)], [wx + ww, wy0 + wh * (1 - lv)]], '#ffd27a', 1.5);
-    const door = TF.pulse(TF.mod(t, 24), 8.0, 9.8, 0.4);
+    const door = TF.pulse(TF.mod(t, 24), 8.9, 10.7, 0.4);
     D.rect(ctx, FUR.x0 - 3, yF - 0.62 * M - door * 0.5 * M, 6, 0.62 * M, '#4a2a20');
     D.poly(ctx, [[FUR.x1, hY(1.42)], [FUR.x1 + 14, hY(1.36)], [FUR.x1 + 14, hY(1.3)], [FUR.x1, hY(1.3)]], '#5d3428');
     // ingot: off the BL cage (6.9) -> table -> into the furnace door
     const iu = TF.mod(t, 24);
-    if (iu >= 6.9 && iu < 9.3) {
-      const x = iu < 7.6 ? TF.lerp(INGOT_FROM, INGOT_TABLE, TF.ramp(iu, 6.9, 7.6)) : iu < 8.4 ? INGOT_TABLE : TF.lerp(INGOT_TABLE, 1440, TF.ramp(iu, 8.4, 9.2));
+    if (iu >= 6.9 && iu < 10.5) {
+      const x = ingotX(t);
       ctx.save(); ctx.beginPath(); ctx.rect(1100, yF - 100, FUR.x0 - 1100, 100); ctx.clip();
       TF.parts.ingot(ctx, x, yF, lod, 0); ctx.restore();
     }
@@ -170,8 +192,8 @@
     D.rect(ctx, GP.px0, hY(GP.closed), GP.px1 - GP.px0, (GP.closed - 0.3) * M, '#5f6b77', '#3f4851', 1);
     if (lod === 'far') return;
     // ladder Optimus
-    const c = climber(t);
-    A.draw(ctx, c, c.y);
+    const c = climber(t), cf = A.draw(ctx, c, c.y), cu = TF.mod(t, 24);
+    if (cu >= 9.2 && cu < 10.5) { const w = cf.w(cf.sk.wristN), hx = Math.min(ingotX(t) - 15, 1395); D.line(ctx, [w, [hx, hY(0.14)]], '#5d656d', 2.2); }   // push bar on the ingot
     // carrier Optimus + quarter panel
     const cs = carrier(t), u = TF.mod(t, 12);
     if (panelOnCarrier(t)) {
@@ -181,13 +203,14 @@
       if (u >= 7.0 && u < 7.5) { const from = [1800, ln.hY(L.rail.hangerLo) + 7 + 14 + 125 + 20]; p = [TF.lerp(from[0], p[0], TF.ramp(u, 7.0, 7.5)), TF.lerp(from[1], p[1], TF.ramp(u, 7.0, 7.5))]; }
       ln.drawPiece(ctx, 'quarter', p[0], p[1], lod);   // carried at its side (behind the body, hands on it)
     }
-    A.draw(ctx, cs, yF);
+    const cfig = A.draw(ctx, cs, yF);
+    if (deburring(t) && lod !== 'far') { const w = cfig.w(cfig.sk.wristN); D.rect(ctx, w[0] - 2, w[1] - 3, 8, 5, '#3f4851'); K.sparks(ctx, w[0] + 7, w[1] + 1, t, lod, 0.35); }
   }
 
   TF.room({
     id: '6A', period: 24, box: room.box,
     ports: { 'BL-6': 'in', 'W3-6': 'both', F6R: 'both', RISER: 'in', D6AB: 'out', F6H: 'both', 'PT-6': 'pass', 'SS-6': 'pass', 'W4-6': 'spare' },
-    actors: ['6A.climber', '6A.carrier', '6A.ladle', '6A.gigapress', '6A.panelpress', 'peek.shiba6A'],
+    actors: ['6A.operator', '6A.carrier', '6A.ladle', '6A.gigapress', '6A.panelpress', 'peek.shiba6A'],
     flows: [
       { item: 'ingot', from: 'DOCK', via: ['BL-6'], to: '6A', sink: 'melted -> frames' },
       { item: 'panel blanks (basket)', from: 'DOCK', via: ['W3-6', 'F6R'], to: '6A', sink: 'stamped; empty basket back to DOCK' },

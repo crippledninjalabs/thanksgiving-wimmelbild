@@ -16,9 +16,21 @@
   const tail = A.local(QX, yF, 1, ln.S[5] - 2.3 * M, hY(1.15));
   const scanP = A.reach([0.3, 1.3], [0.15, 1.05], { gripN: 1, gripF: 0.4, angN: 0.1, head: 0.05 });
   const polishP = (tl) => A.reach([tail[0] + 0.05 * Math.cos(tl * 14), tail[1] + 0.05 * Math.sin(tl * 14)], null, { lean: 0.3, gripN: 0.9, head: 0.2 });
-  const qsegs = [A.hold(6.9, QX, 1), A.keyed(0.3, QX, 1, [[0, A.stand()], [1, polishP(0)]]), A.hold(0.9, QX, 1, (tl) => polishP(tl)),
-    A.keyed(0.2, QX, 1, [[0, polishP(0.9)], [1, scanP]]), A.hold(1.0, QX, 1, () => scanP), A.keyed(0.3, QX, 1, [[0, scanP], [1, A.stand()]])];
-  qsegs.push(A.hold(12 - A.total(qsegs), QX, 1));
+  // round 4 — no idle: while the next body bakes the QC Optimus wipes the oven window, walks back, polishes the
+  // tailgate, scans the body, confirms the pass on the post button, watches the table drop, turns for the next round
+  const win = (tl) => A.reach([0.26 + 0.06 * Math.cos(tl * 8), 1.3 + 0.08 * Math.sin(tl * 8)], [0.1, 1.05], { gripN: 0.8, head: -0.05, angN: 0.6 });
+  const BTN = A.local(QX, yF, 1, 3494, hY(1.45));
+  const btnP = (k) => A.reach([BTN[0] - 0.03 * (1 - k), BTN[1]], null, { gripN: 0.3, head: 0.05 });
+  const qsegs = [
+    A.walk(1.2, QX, 3420, { step: 0.5 }), A.hold(1.6, 3420, -1, (tl) => win(tl)),                         // 0.0 .. 2.8
+    A.walk(0.6, 3420, 3370, { step: 0.5 }), A.hold(1.6, 3370, -1, (tl) => win(tl + 3)),                   // 2.8 .. 5.0
+    A.turn(0.3, 3370, -1), A.walk(1.3, 3370, QX, { step: 0.65 }), A.hold(0.3, QX, 1),                     // 5.0 .. 6.9
+    A.keyed(0.3, QX, 1, [[0, A.stand()], [1, polishP(0)]]), A.hold(0.9, QX, 1, (tl) => polishP(tl)),      // 6.9 .. 8.1
+    A.keyed(0.2, QX, 1, [[0, polishP(0.9)], [1, scanP]]), A.hold(1.0, QX, 1, () => scanP),                // 8.1 .. 9.3
+    A.keyed(0.3, QX, 1, [[0, scanP], [1, btnP(0)]]), A.keyed(0.5, QX, 1, [[0, btnP(0)], [0.5, btnP(1)], [1, btnP(0)]]),   // 9.3 .. 10.1 confirm
+    A.keyed(1.6, QX, 1, [[0, btnP(0)], [0.3, Object.assign(A.stand(), { head: 0.45, lean: 0.08 })], [1, Object.assign(A.stand(), { head: 0.4 })]]),  // 10.1 .. 11.7 watch the drop
+  ];
+  qsegs.push(A.turn(12 - A.total(qsegs), QX, 1));
   const qc = (t) => A.run(qsegs, TF.mod(t, 12));
   const shutter = (ctx, x, open) => {
     const h = OV[2] * M * (1 - open);
@@ -52,9 +64,14 @@
       D.line(ctx, [[LIFT[1] + 2, hY(2.7)], [LIFT[1] + 2, ln.rollTop + d + 9]], '#59626b', 1.5);
       ctx.restore();
       if (lod !== 'far') D.text(ctx, 'L65', (LIFT[0] + LIFT[1]) / 2, hY(2.7) - 14, 10, '#7b848c');
-      // oven exhaust duct to the ceiling, fan faster while baking
-      D.rect(ctx, OV[0] + 54, L.ceilY(6), 12, hY(OV[2] + 0.6) - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
-      if (lod !== 'far') D.fan(ctx, OV[0] + 60, hY(3.7), 10, K.spin(t, 12, 0.3, 2.5, [[0.3, 4.9]]));
+      // oven exhaust: stack up to 4.6 m, across to the air-handling unit (fan faster while baking), AHU out to the ceiling
+      const ahuSpin = K.spin(t, 12, 0.3, 2.5, [[0.3, 4.9]]);
+      D.rect(ctx, OV[0] + 54, hY(4.72), 12, hY(OV[2] + 0.6) - hY(4.72), '#dfe4e8', '#9aa3ab', 1);
+      D.rect(ctx, OV[0] + 54, hY(4.72), 3505 - OV[0] - 54, 12, '#dfe4e8', '#9aa3ab', 1);
+      if (lod !== 'far') D.fan(ctx, OV[0] + 60, hY(3.7), 10, ahuSpin);
+      D.rect(ctx, 3505, hY(4.95), 62, 0.7 * M, '#d5dade', '#7b848c', 1.2);
+      D.rect(ctx, 3527, L.ceilY(6), 16, hY(4.95) - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
+      if (lod !== 'far') { D.fan(ctx, 3536, hY(4.6), 11, ahuSpin + 0.7); for (let k = 0; k < 4; k++) D.line(ctx, [[3552, hY(4.88) + k * 7], [3563, hY(4.88) + k * 7]], '#9aa3ab', 1); }
       // oven temperature screen: curve over the last 12 s + bar (rises during the bake)
       if (lod !== 'far') D.screen(ctx, 3392, hY(2.95), 40, 17, (x, y, w, hh) => {
         ctx.beginPath(); for (let i = 0; i <= 40; i++) { const v = heat(t - 12 + i * 0.3); const yy = y + hh - 2 - v * (hh - 5); i ? ctx.lineTo(x + i, yy) : ctx.moveTo(x, yy); }
@@ -69,6 +86,16 @@
       for (let x = 3472; x <= 3740; x += 24) D.line(ctx, [[x, CAT - 22], [x, CAT]], '#b9c0c7', 1);
       for (const x of [3480, 3730]) D.line(ctx, [[x, CAT], [x, L.ceilY(6)]], '#9aa3ab', 1.5);
       K.ladder(ctx, 3736, yF, 3.3);
+      // L65 drive on the catwalk: motor + chain drum turning while the table moves, hydraulic accumulator with gauge,
+      // cable tray along the upper wall with service cables
+      { const d = liftDrop(t), mv = Math.abs(liftDrop(t + 0.05) - liftDrop(t - 0.05)) > 0.5;
+        D.rect(ctx, 3672, CAT - 22, 26, 22, '#8a96a3', '#5d656d', 1); D.circle(ctx, 3708, CAT - 12, 9, '#c9d0d6', '#5d656d', 1);
+        if (lod !== 'far') { const a = d / 9; D.line(ctx, [[3708 + Math.cos(a) * 8, CAT - 12 + Math.sin(a) * 8], [3708 - Math.cos(a) * 8, CAT - 12 - Math.sin(a) * 8]], '#5d656d', 1.2); }
+        D.line(ctx, [[3716, CAT - 12], [3716, hY(2.7) - 6]], '#4a5056', 1.6, lod === 'near' ? [3, 2] : null);
+        D.rect(ctx, 3636, CAT - 30, 16, 30, '#cfd5db', '#7b848c', 1); D.circle(ctx, 3644, CAT - 30, 8, '#cfd5db', '#7b848c', 1);
+        K.gauge(ctx, 3644, CAT - 16, 5, mv ? 0.75 : 0.35, lod);
+        D.rect(ctx, 3626, hY(4.22), 110, 5, '#9aa3ab', '#6d757d', 0.8);
+        if (lod !== 'far') for (let k = 0; k < 3; k++) K.cable(ctx, [3634 + k * 34, hY(4.22) + 5], [3664 + k * 34, hY(4.22) + 5], t, [6, 8, 12][k], 6 + k, 1.2, '#3f4851', 1); }
       // QC screen on the lift post: scan progress, green lamp when the car passes
       if (lod !== 'far') D.screen(ctx, 3440, hY(2.45), 26, 14, (x, y, w, hh) => {
         const u = TF.mod(t, 12); D.rect(ctx, x + 2, y + hh - 5, (w - 4) * TF.lin(u, 8.3, 9.3) * (u < 10.9 ? 1 : 0), 3, '#60a5fa');
@@ -87,6 +114,7 @@
       D.rect(ctx, 3741, hY(4.6), 18, 0.9 * M, '#dbeefc', '#7b848c', 1.2); D.line(ctx, [[3750, hY(4.6)], [3750, hY(3.7)]], '#7b848c', 1);
       if (lod === 'far') return;
       // QC Optimus + scanner beam / polishing cloth
+      D.rect(ctx, 3489, hY(1.55), 9, 12, '#d5dade', '#5d656d', 0.6); D.circle(ctx, 3493.5, hY(1.45), 2, TF.mod(t, 12) >= 9.6 && TF.mod(t, 12) < 10.9 ? '#4ade80' : '#7b848c');   // confirm button on the post
       const st = qc(t), fig = A.draw(ctx, st, yF), w = fig.w(fig.sk.wristN), u = TF.mod(t, 12);
       if (u >= 7.2 && u < 8.1) D.rect(ctx, w[0] - 3, w[1] - 3, 7, 6, '#3b82f6');
       if (u >= 8.1 && u < 9.6) {
