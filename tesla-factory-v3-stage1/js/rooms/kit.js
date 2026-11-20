@@ -38,6 +38,42 @@
     const rev = (base * u + boost * inWin(u)) * per / (base * period + boost * inWin(period));   // n * per whole turns dropped
     return Math.PI * 2 * (rev - Math.floor(rev));
   };
+  // ---------- subtle background life (all periods divide 48 s so t = 0 and t = 48 match) ----------
+  // Status cabinet: LEDs blink on deterministic patterns (rates 1, 2 or 4 Hz, pattern repeats every 48 s)
+  K.cabinet = (ctx, x, y, w, h, t, seed, lod) => {
+    D.rect(ctx, x, y, w, h, '#d5dade', '#8a939b', 0.9);
+    if (lod === 'far') return;
+    D.line(ctx, [[x + w / 2, y + 2], [x + w / 2, y + h - 2]], '#b3bac1', 0.6);
+    const n = Math.max(2, Math.floor((w - 4) / 4));
+    for (let i = 0; i < n; i++) {
+      const rate = [1, 2, 4][(seed + i) % 3], k = TF.mod(Math.floor(t * rate), 48 * rate);
+      const on = TF.hash(seed * 7 + i, k) > 0.35, col = i === n - 1 ? '#4ade80' : (seed + i) % 4 === 0 ? '#fbbf24' : '#60a5fa';
+      D.circle(ctx, x + 3 + i * 4, y + 3.5, 1.1, on ? col : '#5b6670');
+    }
+    if (lod === 'near') for (let k = 0; k < 3; k++) D.line(ctx, [[x + 2, y + h - 3 - k * 2.5], [x + w / 2 - 2, y + h - 3 - k * 2.5]], '#aab2ba', 0.6);
+  };
+  // faint wisp (steam / fume) rising from (x, y): 3 puffs on a `period` that divides 48
+  K.wisp = (ctx, x, y, t, period, lod, a = 0.22, col = '#dfe4e8', rise = 26) => {
+    if (lod === 'far') return;
+    for (let i = 0; i < 3; i++) {
+      const k = TF.mod(t / period + i / 3, 1);
+      ctx.globalAlpha = a * Math.sin(Math.PI * k);
+      D.circle(ctx, x + 3 * Math.sin((k + i) * Math.PI * 2), y - k * rise, 2.5 + 5 * k, col);
+    }
+    ctx.globalAlpha = 1;
+  };
+  // swaying hanging cable/hose from a to b (sag + sideways sway, period divides 48)
+  K.cable = (ctx, a, b, t, period, sag = 10, sway = 3, col = '#2b2f34', w = 1.1) => {
+    const s = Math.sin(t / period * Math.PI * 2) * sway;
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo((a[0] + b[0]) / 2 + s, Math.max(a[1], b[1]) + sag, b[0], b[1]);
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+  };
+  // beacon lamp: lit while `on`, with a soft halo pulse (period 1 s)
+  K.beacon = (ctx, x, y, t, on, col = '#f59e0b') => {
+    D.rect(ctx, x - 2.5, y, 5, 3, '#5d656d');
+    D.circle(ctx, x, y - 1, 2.6, on ? col : '#8a7a5a');
+    if (on) { ctx.globalAlpha = 0.25 + 0.2 * Math.sin(t * Math.PI * 2); D.circle(ctx, x, y - 1, 6, col); ctx.globalAlpha = 1; }
+  };
   K.sparks = (ctx, x, y, t, lod, k = 1) => {
     D.circle(ctx, x, y, 6 * k, 'rgba(255,190,60,0.35)');
     D.circle(ctx, x, y, 2.4 * k, '#fff6c8');

@@ -32,8 +32,9 @@
   };
   const drawArm = (ctx, a, t, lod) => {
     const r = tipOf(a, t);
-    K.arm(ctx, a.base, r.tip, { l1: 38, l2: 34, toolAng: a.toolAng, bend: a.bend, hang: a.hang });
-    if (r.on && lod !== 'far') K.sparks(ctx, r.tip[0], r.tip[1], t, lod, 0.8);
+    const j = K.arm(ctx, a.base, r.tip, { l1: 38, l2: 34, toolAng: a.toolAng, bend: a.bend, hang: a.hang });
+    if (lod !== 'far') K.cable(ctx, [a.base[0] + (a.hang ? 6 : -8), a.base[1] + (a.hang ? 2 : -6)], j.wrist, t, 6, a.hang ? 8 : -6, 1.5, '#3f4851', 1.2);   // dress pack
+    if (r.on && lod !== 'far') { K.sparks(ctx, r.tip[0], r.tip[1], t, lod, 0.8); K.wisp(ctx, r.tip[0], r.tip[1] - 4, t, 1.5, lod, 0.16, '#cfd5db', 22); }
     if (r.dressing && lod === 'near') K.sparks(ctx, r.tip[0], r.tip[1], t, lod, 0.35);
   };
   const welding = (t) => ARMS.some((a) => tipOf(a, t).on);
@@ -87,6 +88,7 @@
       for (const dx of [-18, 18]) D.rect(ctx, fc[0] + dx - 2, fc[1] + 12, 4, 9, '#2f7fd8');
       { const uu = TF.mod(t, 12); if (uu >= ln.QFIX.on[0] && uu < ln.QFIX.on[1]) ln.drawPiece(ctx, 'quarter', fc[0], fc[1], lod); }
       if (lod === 'far') return;
+      K.cabinet(ctx, 2276, hY(1.0), 22, 50, t, 5, lod);
       // weld-count lamps + current trace on the gantry leg screen
       const n = beadsDone(t);
       D.screen(ctx, X + 2.25 * M, hY(2.3), 22, 14, (x, y, w, h) => {

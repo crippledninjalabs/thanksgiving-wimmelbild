@@ -53,6 +53,10 @@
     A.turn(0.3, BX, -1),
   ];
   segB.push(A.hold(12 - A.total(segB), BX, 1));
+  // background sweeper Optimus by the feeder: short broom strokes, pauses each pitch to glance at the line
+  const SWX = 2408;
+  const sweeper = (t) => { const u = TF.mod(t, 12), k = TF.pulse(u, 0.2, 8.8, 0.6), s = Math.sin(t * Math.PI) * k;
+    return { x: SWX, face: -1, pose: A.reach([0.2 + 0.1 * s, 0.82], [0.08 + 0.06 * s, 1.08], { lean: 0.22 * k + 0.02, head: 0.3 * k - 0.15 * (1 - k), gripN: 1, gripF: 1, angN: -1.1, angF: -1.0 }), s, k }; };
   const optA = (t) => A.run(segA, TF.mod(t, 12)), optB = (t) => A.run(segB, TF.mod(t, 12));
   const bolting = (t) => { const u = TF.mod(t, 12); return [u >= ln.FIT.rearDoor + 0.3 && u < ln.FIT.boltRear, u >= ln.FIT.frontDoor + 0.3 && u < ln.FIT.boltFront, u >= ln.FIT.hood + 0.3 && u < ln.FIT.boltHood]; };
   // feeder hopper bolt count (+6 per capsule at BOLTS_IN, -2 per hinge set)
@@ -110,6 +114,11 @@
         const car = ln.carAtStation(t, 2), done = car && car.tau < 8.5 ? car.bolts : [0, 0, 0];
         done.forEach((d, k) => D.circle(ctx, x + 6 + k * 8, y + h - 3, 1.8, d ? '#4ade80' : '#334155'));
       });
+      // status cabinet + sweeper (background life, behind the car line)
+      K.cabinet(ctx, 2348, hY(0.92), 20, 46, t, 7, lod);
+      { const sw = sweeper(t), fig = A.draw(ctx, sw, yF), w = fig.w(fig.sk.wristF), head = [SWX - (0.62 + 0.14 * sw.s) * M, yF - 3];
+        D.line(ctx, [[w[0] + 6, w[1] - 8], head], '#9a6b3c', 1.6); D.rect(ctx, head[0] - 6, head[1] - 2, 12, 4, '#4a5056');
+        if (lod === 'near' && sw.k > 0.5) for (let i = 0; i < 3; i++) D.circle(ctx, head[0] - 8 - i * 3 * Math.abs(sw.s), yF - 1.5 - i, 0.7, '#b9b0a0'); }
       // supply-air duct along the upper wall: fan box pushes fresh air to the bolting stations and out of the east vent
       D.rect(ctx, 2322, hY(3.04), 425, 10, '#e3e7eb', '#9aa3ab', 1);
       D.rect(ctx, 2700, hY(3.17), 30, 22, '#c9d0d6', '#7b848c', 1);

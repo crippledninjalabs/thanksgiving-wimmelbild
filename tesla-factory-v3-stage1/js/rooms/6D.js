@@ -123,6 +123,8 @@
       D.poly(ctx, [[wx - 4, ny - 6], [wx + 4, ny - 6], [wx + 2, ny], [wx - 2, ny]], '#3a3f45');
       if (sp) { ctx.globalAlpha = 0.35; D.poly(ctx, [[wx - 2, ny], [wx + 2, ny], [wx + 14, ny + 15], [wx - 14, ny + 15]], '#e04848'); ctx.globalAlpha = 1; }
       kitchen(ctx, t, lod, sp);
+      K.cabinet(ctx, 3204, hY(0.95), 22, 47, t, 11, lod);
+      if (sp && lod !== 'far') { ctx.globalAlpha = 0.05 + 0.02 * Math.sin(t * Math.PI); D.rect(ctx, BOOTH[0] + 4, hY(BOOTH[2]) + 4, BOOTH[1] - BOOTH[0] - 8, BOOTH[2] * M - 8, '#e04848'); ctx.globalAlpha = 1; }
       if (theme.decor.garland) theme.decor.garland(ctx, room.inner.x, room.inner.x + room.inner.w, room.inner.y, t, lod);
     },
     draw() {},

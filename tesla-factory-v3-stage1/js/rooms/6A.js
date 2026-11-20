@@ -151,6 +151,11 @@
     ctx.restore();
     if (la.filling) D.line(ctx, [[FUR.x1 + 14, hY(1.33)], [la.x - 4, ly - 14]], '#ff9a4a', 2.4);
     if (la.pouring) D.line(ctx, [[la.x + 12, ly - 10], [FUNNEL[0], FUNNEL[1]]], '#ff9a4a', 2.4);
+    // background life: die-cooling steam after the shot, heat haze at the spout, press controller LEDs
+    { const u = TF.mod(t, 12), hot = TF.pulse(u, 3.8, 8.4, 1.0);
+      if (hot > 0) for (const x of [1600, 1700, 1790]) K.wisp(ctx, x, hY(1.72), t + x * 0.01, 2, lod, 0.22 * hot);
+      K.wisp(ctx, FUR.x1 + 8, hY(1.5), t, 3, lod, 0.14, '#ffd9b0', 18);
+      K.cabinet(ctx, 1508, hY(3.05), 13, 20, t, 3, lod); }
     // furnace fume duct: from the deck up the west wall to the ceiling; fan runs faster while the furnace melts
     D.rect(ctx, 1366, L.ceilY(6), 14, hY(DECK.h) - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
     D.rect(ctx, 1362, hY(3.72), 26, 10, '#c9d0d6', '#7b848c', 1);                           // junction box (peek hatch on top)

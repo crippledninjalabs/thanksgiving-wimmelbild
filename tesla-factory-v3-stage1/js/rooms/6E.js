@@ -59,6 +59,10 @@
       if (lod !== 'far') D.screen(ctx, 3392, hY(2.95), 40, 17, (x, y, w, hh) => {
         ctx.beginPath(); for (let i = 0; i <= 40; i++) { const v = heat(t - 12 + i * 0.3); const yy = y + hh - 2 - v * (hh - 5); i ? ctx.lineTo(x + i, yy) : ctx.moveTo(x, yy); }
         ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 0.9; ctx.stroke(); });
+      { const u = TF.mod(t, 12), moving = u < 0.4 || (u >= 9.4 && u < 12.4);
+        K.beacon(ctx, LIFT[0] - 3, hY(2.7) - 10, t, moving);
+        if (shutterE(t) > 0.2) K.wisp(ctx, OV[1] - 4, hY(2.0), t, 2, lod, 0.2 * shutterE(t), '#eadfd8', 30); }
+      K.cabinet(ctx, 3690, CAT - 20, 18, 20, t, 13, lod);
       // maintenance catwalk over the L65 hoist (wave-peek hatch), hung from the ceiling, ladder at the east wall
       D.rect(ctx, 3470, CAT, 270, 5, '#9aa3ac', '#6d757d', 1);
       D.line(ctx, [[3470, CAT - 22], [3740, CAT - 22]], '#9aa3ac', 1.5);

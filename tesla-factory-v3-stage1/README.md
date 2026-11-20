@@ -23,9 +23,11 @@ js/transport/*.js     generic transports: track (path + schedule + fleets), roll
                       tube (pneumatic capsule), slide (spiral), cagelift (big open cage + bobbing counterweight),
                       core.js (west core: BL lift with the §6 schedule, PT riser, W3 chain, SS slide, W4, DOCK table)
 js/themes/*.js        default, thanksgiving (only decor + themed payloads)
-js/rooms/kit.js       shared machine parts (IK industrial arm, sparks, gauge, valve, ladder, pipe) and parts
+js/rooms/kit.js       shared machine parts (IK industrial arm, sparks, gauge, valve, ladder, pipe, spin) and subtle
+                      background life (status cabinet LEDs, wisps, swaying cables, beacon; periods divide 48 s)
 js/rooms/line6.js     floor-6 line: Model Y car chain (12 s pitch), staged body drawing, F6H hangers, F6R baskets,
                       PT-6 bolt capsule
+js/rooms/biw.js       LOOKS ONLY: body-in-white drawing (open structure, bare metal, spot welds, coats); line6 keeps timing
 js/rooms/6A..6E.js    the floor-6 room modules
 js/main.js            URL params, animation loop, test hooks
 ```

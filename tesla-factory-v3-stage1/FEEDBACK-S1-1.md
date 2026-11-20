@@ -9,3 +9,7 @@
 ## Reid 5:05 AM (approved map changes 1-5; add to this run)
 - Map changes 1-5 (winch quarter panel, basket blanks, one booth 2 heads, short doorways, L65 timing) are APPROVED.
 - Upper half of each room must not be empty. Besides the overhead flow pieces above (rails, tubes, catwalks, ducts, fans, screens), add sporadic easter-egg pop-ups in the upper space on their own staggered prime timers (not synced to 24/48 s or each other): e.g. the Shiba popping its head up from a vent/catwalk/duct hatch in different rooms, an Optimus waving from a catwalk, a drone peeking in a high window, a hard hat on a pipe wobbling. Build it as a reusable "peek" system so later floors reuse it.
+
+## Reid 2:36 PM (round 3)
+1. Whole floor: add more activity but keep it SUBTLE (background life, not new main flows). Examples: blinking status lights, small sparks/steam/fume wisps, a tool cart rolling, an Optimus inspecting or sweeping, cables swaying, screen flickers. Must not clutter or compete with the main line.
+2. Early-stage vehicles must look like real unfinished cars, not an unpainted outline being filled in. Show body-in-white: bare-metal shading, weld seams and spot-weld dots, open structure (pillars, roof rails, floor pan, crossmembers), real openings where doors/hood/glass are missing, no wheels until fitted. Each station visibly adds real parts.

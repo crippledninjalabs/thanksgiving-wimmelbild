@@ -62,61 +62,10 @@
     return Math.PI * 4 * (n + TF.ramp(tau, MOVE0, PITCH) + (extra ? n + TF.ramp(tau, 5, 6.8) : 0));
   };
 
-  // ---------- drawing ----------
-  const path = (ctx, pts) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); };
-  const lw = (px) => px / M;
-  const pieceShape = (ctx, name, col) => {
-    const pc = PIECE[name];
-    path(ctx, pc.poly); P.fillStroke(ctx, col, COL.out, 1.4);
-    if (pc.frame) { P.line(ctx, pc.frame, COL.out, 0.06); P.line(ctx, pc.frame, col, 0.04); }
-    if (name === 'quarter') { ctx.save(); path(ctx, pc.poly); ctx.clip(); ctx.beginPath(); ctx.arc(ARCH[1][0], ARCH[1][1], ARCH_R, 0, Math.PI); P.fillStroke(ctx, '#2a2e33', null); ctx.restore(); }
-  };
-  function bodyPass(ctx, st, col, lod, pieceCol) {
-    P.smooth(ctx, OUT, col, COL.out, 1.6);
-    ctx.save(); P.smooth(ctx, OUT, null, null); ctx.clip();
-    P.poly(ctx, [[3, 0], [3, 0.5], [-3, 0.5], [-3, 0]], P.shade(col, 0.86), null);           // lower shade
-    P.smooth(ctx, GLASS, COL.win, COL.out, 1);                                                // window openings (glass comes on 5E)
-    for (const [name, on] of [['rearDoor', st.rearDoor], ['frontDoor', st.frontDoor], ['hood', st.hood], ['quarter', st.quarter]]) {
-      const pc = PIECE[name];
-      if (!on) { path(ctx, pc.poly); ctx.fillStyle = COL.open; ctx.fill(); ctx.lineWidth = lw(1); ctx.strokeStyle = COL.out; ctx.stroke(); continue; }
-      pieceShape(ctx, name, pieceCol);
-    }
-    if (lod !== 'far') P.line(ctx, [[2.25, 0.74], [0.8, 0.94], [-1.6, 1.0], [-2.3, 0.98]], P.shade(col, 1.12 + 0.12 * st.bake), 0.025 + 0.012 * st.bake);
-    ctx.restore();
-    for (const [ax, ay] of ARCH) { ctx.beginPath(); ctx.arc(ax, ay, ARCH_R, 0, Math.PI); ctx.lineTo(ax + ARCH_R, ay); P.fillStroke(ctx, '#2a2e33', null); }
-  }
-  // Draw a car body. (x, yFloor) world; st from line.state
-  line.drawBody = (ctx, x, y, st, lod) => {
-    P.begin(ctx, x, y, M, 1);
-    const base = st.heat > 0 ? D.mix(COL.frame, '#ff8a3d', st.heat * 0.85) : COL.frame;
-    bodyPass(ctx, st, base, lod, COL.steel);
-    if (st.paint > 0) {
-      const xm = 2.45 - st.paint * 4.9;
-      ctx.save(); ctx.beginPath(); ctx.rect(xm, -1, 6, 4); ctx.clip();
-      bodyPass(ctx, st, COL.red, lod, COL.red);
-      ctx.restore();
-    }
-    // weld beads (stay on the part; painted over in 6D)
-    if (lod !== 'far') st.beads.forEach((p, j) => {
-      if (p <= 0) return;
-      const sp = SEAMS[j], pts = [];
-      for (let s = 0; s <= sp.total * p + 1e-9; s += sp.total / 24) pts.push(sp.at(s));
-      pts.push(sp.at(sp.total * p));
-      const painted = st.paint > 0 && pts[0][0] > 2.45 - st.paint * 4.9;
-      P.line(ctx, pts, painted ? P.shade(COL.red, 0.62) : COL.bead, 0.04);
-      if (lod === 'near' && !painted) P.line(ctx, pts, '#9aa2aa', 0.012);
-      if (st.welding[j]) P.circle(ctx, pts[pts.length - 1], 0.03, '#ffb347', null);
-    });
-    if (lod === 'near') st.bolts.forEach((b, j) => { if (b) P.circle(ctx, [[-0.12, 0.95], [1.12, 0.95], [1.2, 1.0]][j], 0.022, '#30353a', null); });
-    P.end(ctx);
-  };
-  // Draw a loose piece (door/hood/quarter) with its centre at world (wx, wy)
-  line.drawPiece = (ctx, name, wx, wy, lod, col = COL.steel) => {
-    const pc = PIECE[name];
-    P.begin(ctx, wx - pc.c[0] * M, wy + pc.c[1] * M, M, 1);
-    pieceShape(ctx, name, col);
-    P.end(ctx);
-  };
+  // ---------- drawing: looks live in biw.js (body-in-white), this file only owns geometry + timing ----------
+  line.ARCH = ARCH; line.ARCH_R = ARCH_R; line.OUT = OUT; line.GLASS = GLASS;
+  line.drawBody = (ctx, x, y, st, lod) => TF.biw.drawBody(ctx, x, y, st, lod);
+  line.drawPiece = (ctx, name, wx, wy, lod) => TF.biw.drawPiece(ctx, name, wx, wy, lod);
   line.pieceTop = (name) => Math.max(...PIECE[name].poly.concat(PIECE[name].frame || []).map((p) => p[1])) - PIECE[name].c[1];
   line.seamWorld = (carX, j, u) => { const p = SEAMS[j].at(SEAMS[j].total * u); return [carX + p[0] * M, yF - p[1] * M]; };
 
