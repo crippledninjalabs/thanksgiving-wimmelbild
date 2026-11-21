@@ -1,0 +1,7 @@
+html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; font-family: system-ui, sans-serif; }
+#cv { display: block; width: 100vw; height: 100vh; cursor: grab; touch-action: none; }
+#cv.drag { cursor: grabbing; }
+#hud { position: fixed; left: 10px; bottom: 10px; display: flex; gap: 6px; align-items: center; font-size: 12px; color: #556; }
+#hud button { width: 30px; height: 30px; border: 1px solid #c9ced4; background: #fff; border-radius: 6px; cursor: pointer; font-size: 15px; color: #445; }
+#hud button:hover { background: #f2f4f6; }
+body.clean #hud { display: none; }

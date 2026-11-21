@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tesla Factory v3 — figure sheets</title>
+<style>body{margin:0;background:#fff;font-family:sans-serif}canvas{display:block;max-width:100%}nav{padding:6px 10px;font-size:13px}nav a{margin-right:10px}</style>
+</head><body>
+<nav id="nav"></nav>
+<canvas id="cv"></canvas>
+<script src="js/style.js"></script>
+<script src="js/rig.js"></script>
+<script src="js/paint.js"></script>
+<script src="js/props.js"></script>
+<script src="js/optimus.js"></script>
+<script src="js/elon.js"></script>
+<script src="js/vehicles.js"></script>
+<script src="js/clips.js"></script>
+<script src="js/sheets.js"></script>
+<script src="js/anims.js"></script>
+<script>
+// ?sheet=optimus|elon|cybercab|vehicles|overview   or   ?anim=<name>[&t=seconds] (plays when no t)
+const q = new URLSearchParams(location.search), cv = document.getElementById('cv');
+const names = Object.keys(TF3.sheets).filter((k) => TF3.sheets[k]);
+document.getElementById('nav').innerHTML = names.map((n) => `<a href="?sheet=${n}">${n}</a>`).join('') +
+  Object.keys(TF3.anims || {}).map((n) => `<a href="?anim=${n}">▶ ${n}</a>`).join('');
+if (q.get('nonav')) document.getElementById('nav').remove();
+if (q.get('anim')) {
+  const a = TF3.anims[q.get('anim')]; cv.width = a.w; cv.height = a.h;
+  const ctx = cv.getContext('2d');
+  if (q.get('t')) a.draw(ctx, +q.get('t'));
+  else { const t0 = performance.now(); (function f() { a.draw(ctx, ((performance.now() - t0) / 1000) % a.duration); requestAnimationFrame(f); })(); }
+} else TF3.sheets[q.get('sheet') || 'optimus'](cv);
+window.READY = true;
+</script>
+</body></html>
