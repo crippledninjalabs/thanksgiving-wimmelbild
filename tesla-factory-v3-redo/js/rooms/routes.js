@@ -30,7 +30,7 @@
   R.optPacks = S.basket({ id: 'optimus-packs', period: 24, journey: 48, dep: 9.0, base: { floor: 3, x: 2150, drop: 60 }, start: ['pack', 'pack'],
     stops: [{ floor: 7, x: 2560, drop: 60, dwell: 1.6, unload: ['pack', 'pack'] }] });
   R.foodCrate = S.basket({ id: 'ship-food', period: 24, journey: 48, dep: 16.0, base: { floor: 1, x: 2950, drop: 150 }, start: ['foodcrate'],
-    stops: [{ floor: 8, x: 3520, drop: 60, dwell: 1.6, unload: ['foodcrate'] }] });
+    stops: [{ floor: 8, x: 3660, drop: 138, dwell: 1.6, unload: ['foodcrate'] }] });
   // PT: 9B computers (floor 9, part 2) -> 5A (every 12 s) and -> 4C (every 24 s)
   R.comp5 = S.capsule({ id: 'computer-5A', period: 12, journey: 24, dep: 5.0, col: '#0ea5e9', item: 'computer', from: { floor: 9, x: 1960, h: 1.6 }, to: { floor: 5, x: 1560, h: 1.7 } });
   R.comp4 = S.capsule({ id: 'computer-4C', period: 24, journey: 24, dep: 15.5, col: '#0ea5e9', item: 'computer', from: { floor: 9, x: 1990, h: 1.6 }, to: { floor: 4, x: 2340, h: 1.7 } });
@@ -47,8 +47,8 @@
   R.foam = S.basket({ id: 'foam-fabric', period: 24, journey: 24, dep: 0.6, base: 'dock', start: ['box', 'box'],
     stops: [{ floor: 9, x: 2880, drop: 130, dwell: 1.4, unload: ['box', 'box'] }] });
   // 8A tiles -> 8E (two fired tiles per 48 s, packed into the ring's tile crate)
-  R.tiles = S.basket({ id: 'tiles', period: 48, journey: 48, dep: 26.0, base: { floor: 8, x: 1700, drop: 120 }, start: ['scrap', 'scrap'],
-    stops: [{ floor: 8, x: 3460, drop: 120, dwell: 1.4, unload: ['scrap', 'scrap'] }] });
+  R.tiles = S.basket({ id: 'tiles', period: 48, journey: 48, dep: 26.0, base: { floor: 8, x: 1700, drop: 120 }, start: ['crate'],
+    stops: [{ floor: 8, x: 3365, drop: 138, dwell: 1.4, unload: ['crate'] }] });
   // window drones into the 7E east wall: sensors -> 7B, injector sets -> up through H78 to 8D (48 s each, staggered)
   R.sensors7 = S.windowDrone({ id: 'sensors-7E', owner: '7E', floor: 7, wallX: 3750, h: 3.4, side: 1, period: 48, offset: 13, item: 'sensor', col: '#9333ea', to: { floor: 7, x: 2000, h: 2.0 } });
   R.injectors = S.windowDrone({ id: 'injectors-7E', owner: '7E', floor: 7, wallX: 3750, h: 3.9, side: 1, period: 48, offset: 37, item: 'box', col: '#ef4444', to: { floor: 8, x: 3060, h: 1.6 } });

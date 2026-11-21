@@ -68,7 +68,8 @@
     D.line(ctx, [[BOOTH[0], KD - 22], [BOOTH[1], KD - 22]], '#9aa3ac', 1.5);
     for (let x = BOOTH[0] + 2; x <= BOOTH[1]; x += 24) D.line(ctx, [[x, KD - 22], [x, KD]], '#b9c0c7', 1);
     // fume duct from the booth roof to the ceiling (Shiba peek hatch box on it)
-    D.rect(ctx, 3160, L.ceilY(6), 18, KD - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
+    D.rect(ctx, 3160, hY(4.88), 18, KD - hY(4.88), '#dfe4e8', '#9aa3ab', 1);
+    D.rect(ctx, 3157, hY(4.88) - 8, 24, 3, '#9aa3ab'); D.rect(ctx, 3157, hY(4.88) + 5, 24, 3, '#9aa3ab');   // T-collar into the floor-6 trunk
     D.rect(ctx, 3156, hY(4.02), 26, 10, '#c9d0d6', '#7b848c', 1);
     const fan = K.spin(t, 12, 0.4, 2.5, [[0.8, 7.6]]);
     if (lod !== 'far') { D.fan(ctx, 3169, hY(3.45), 10, fan); D.fan(ctx, 3169, hY(4.65), 10, fan + 0.5); }
@@ -135,7 +136,7 @@
       D.poly(ctx, [[wx - 4, ny - 6], [wx + 4, ny - 6], [wx + 2, ny], [wx - 2, ny]], '#3a3f45');
       if (sp) { ctx.globalAlpha = 0.35; D.poly(ctx, [[wx - 2, ny], [wx + 2, ny], [wx + 14, ny + 15], [wx - 14, ny + 15]], '#e04848'); ctx.globalAlpha = 1; }
       kitchen(ctx, t, lod, sp);
-      K.cabinet(ctx, 3204, hY(0.95), 22, 47, t, 11, lod);
+      K.cabinet(ctx, 3204, yF - 47, 22, 47, t, 11, lod);
       if (sp && lod !== 'far') { ctx.globalAlpha = 0.05 + 0.02 * Math.sin(t * Math.PI); D.rect(ctx, BOOTH[0] + 4, hY(BOOTH[2]) + 4, BOOTH[1] - BOOTH[0] - 8, BOOTH[2] * M - 8, '#e04848'); ctx.globalAlpha = 1; }
       if (theme.decor.garland) theme.decor.garland(ctx, room.inner.x, room.inner.x + room.inner.w, room.inner.y, t, lod);
     },

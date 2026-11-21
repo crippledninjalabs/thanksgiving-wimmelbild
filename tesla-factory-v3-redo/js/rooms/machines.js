@@ -77,11 +77,9 @@
   };
 
   // ---------- upper-half filler (overhead services; static or subtly animated, periods divide 48) ----------
-  // o: {duct: [x0, x1, hm], fans: [x...], pipes: [x0, x1, hm], valves: [x...], tray: [x0, x1, hm], lamps: [x...], seed}
+  // o: {pipes: [x0, x1, hm], valves: [x...], tray: [x0, x1, hm], lamps: [x...], seed}
   X.upper = (ctx, yF, ceil, t, lod, o) => {
-    if (o.duct) { const [x0, x1, h] = o.duct; D.rect(ctx, x0, H(yF, h) - 7, x1 - x0, 14, '#e3e7eb', '#9aa3ab', 1);
-      if (lod !== 'far') for (const x of o.fans || []) { D.rect(ctx, x - 12, H(yF, h) - 13, 24, 26, '#c9d0d6', '#7b848c', 1); D.fan(ctx, x, H(yF, h), 9, K.spin(t, 12, 0.5)); }
-      for (const x of o.drops || []) { D.rect(ctx, x - 5, H(yF, h) + 7, 10, 18, '#e3e7eb', '#9aa3ab', 0.8); D.poly(ctx, [[x - 10, H(yF, h) + 25], [x + 10, H(yF, h) + 25], [x + 6, H(yF, h) + 20], [x - 6, H(yF, h) + 20]], '#cfd5db', '#9aa3ab', 0.8); } }
+    // o.duct / o.fans / o.drops are ignored: ductwork is the building-wide 'HVAC-ducts' transport below
     if (o.pipes) { const [x0, x1, h] = o.pipes;
       K.pipe(ctx, [[x0, H(yF, h)], [x1, H(yF, h)]], '#5b8fc9', 4, t * 25, lod); K.pipe(ctx, [[x0, H(yF, h) + 8], [x1, H(yF, h) + 8]], '#9aa3ab', 4, null, lod);
       if (lod !== 'far') for (const x of o.valves || []) K.valve(ctx, x, H(yF, h) - 5, 4, 0); }
@@ -90,4 +88,53 @@
     for (const x of o.lamps || []) { D.line(ctx, [[x, ceil], [x, ceil + 10]], '#9aa3ab', 1); D.poly(ctx, [[x - 8, ceil + 14], [x + 8, ceil + 14], [x + 5, ceil + 10], [x - 5, ceil + 10]], '#e5e7eb', '#9aa3ab', 0.8);
       if (lod === 'near') { ctx.globalAlpha = 0.12; D.poly(ctx, [[x - 8, ceil + 14], [x + 8, ceil + 14], [x + 22, ceil + 60], [x - 22, ceil + 60]], '#fff7d6'); ctx.globalAlpha = 1; } }
   };
+  // ---------- building-wide HVAC ductwork (roof AHU + exhaust unit, two risers, one trunk per floor, hoods + diffusers) ----------
+  const L = TF.layout;
+  if (L && TF.transport) {
+    const yRoof = L.ceilY(9) - L.slab, rS = [1808, 1820], rE = [2766, 2778];
+    const tm = (f) => (f === 6 ? 4.88 : 4.55), tc = (f) => L.hY(f, tm(f));
+    const HOODS = [[1, 2090, 2.3], [1, 3520, 2.6], [3, 3530, 2.5], [4, 2560, 2.8], [5, 1580, 2.6], [8, 1690, 2.2], [8, 2563, 3.55]];
+    const DIFF = { 9: [0, 1, 3, 4], 7: [0, 2, 3], 5: [2], 4: [1], 3: [1], 2: [0, 2, 4] };
+    const FILL = '#e3e7eb', EDGE = '#9aa3ab', FLG = '#9aa3ab';
+    TF.transport({ id: 'HVAC-ducts', owner: 'CORE', period: 12, layer: 'back',
+      box: { x: L.X0 - 40, y: L.ceilY(9) - L.slab - 90, w: L.X1 - L.X0 + 80, h: L.G - L.ceilY(9) + L.slab + 110 },
+      draw(ctx, t, theme, lod) {
+        const far = lod === 'far', bot = L.hY(1, 4.55) + 7;
+        // roof units
+        D.rect(ctx, 1756, yRoof - 44, 70, 44, '#d5dade', '#7b848c', 1.2);
+        D.rect(ctx, 1756, yRoof - 44, 7, 44, '#aab2ba', '#7b848c', 0.8);
+        if (!far) { for (let k = 0; k < 5; k++) D.line(ctx, [[1758, yRoof - 38 + k * 8], [1761, yRoof - 38 + k * 8]], '#6d757d', 1);
+          D.fan(ctx, 1795, yRoof - 22, 14, K.spin(t, 12, 0.5)); }
+        if (lod === 'near') D.text(ctx, 'AHU-1', 1790, yRoof - 4, 6, '#7b848c');
+        D.rect(ctx, 2762, yRoof - 46, 56, 46, '#cfd5db', '#6d757d', 1.2);
+        D.rect(ctx, 2768, yRoof - 52, 44, 6, '#aab2ba', '#6d757d', 1);
+        if (!far) D.fan(ctx, 2790, yRoof - 25, 15, K.spin(t, 12, 0.5));
+        // risers
+        for (const r of [rS, rE]) {
+          D.rect(ctx, r[0], yRoof, 12, bot - yRoof, FILL, EDGE, 1);
+          for (let f = 1; f <= 9; f++) { const x = r[0] + 6; D.rect(ctx, x - 8, L.ceilY(f) - L.slab - 2 + (f === 9 ? 0 : 0), 16, 4, FLG); if (f < 9) D.rect(ctx, x - 8, L.ceilY(f) - 2, 16, 4, FLG); }
+        }
+        // floor trunks
+        for (let f = 1; f <= 9; f++) {
+          const y = tc(f), yb = y + 6;
+          D.rect(ctx, 1364, y - 6, 2372, 12, FILL, EDGE, 1);
+          D.rect(ctx, 1364, y - 9, 6, 18, FLG); D.rect(ctx, 3730, y - 9, 6, 18, FLG);
+          for (const r of [rS, rE]) { D.rect(ctx, r[0] - 2, y - 8, 16, 3, FLG); D.rect(ctx, r[0] - 2, y + 5, 16, 3, FLG); }
+          for (let c = 1; c <= 4; c++) { const bx = L.X0 + c * L.cellW; D.rect(ctx, bx - L.wall / 2 - 3, y - 8, 6, 16, FLG); D.rect(ctx, bx + L.wall / 2 - 3, y - 8, 6, 16, FLG); }
+          if (!far) {
+            for (let x = 1450; x < 3730; x += 90) D.line(ctx, [[x, y - 6], [x, y + 6]], '#c3cad0', 0.8);
+            for (const x of [1900, 2830]) { D.rect(ctx, x - 11, y - 11, 22, 22, '#c9d0d6', '#7b848c', 1); D.fan(ctx, x, y, 8, K.spin(t, 12, 0.5)); }
+          }
+          for (const [hf, x, hm] of HOODS) if (hf === f) {
+            const hy = L.hY(f, hm);
+            D.rect(ctx, x - 5, yb, 10, hy - yb, FILL, EDGE, 0.8); D.rect(ctx, x - 8, yb, 16, 3, FLG);
+            D.poly(ctx, [[x - 6, hy - 12], [x + 6, hy - 12], [x + 24, hy], [x - 24, hy]], '#cfd5db', '#7b848c', 1);
+          }
+          for (const c of DIFF[f] || []) { const x = L.X0 + c * L.cellW + 240;
+            D.rect(ctx, x - 5, yb, 10, 10, FILL, EDGE, 0.8);
+            D.rect(ctx, x - 8, yb + 10, 16, 5, '#cfd5db', '#9aa3ab', 0.8);
+            if (!far) for (let k = -4; k <= 4; k += 4) D.line(ctx, [[x + k, yb + 11], [x + k, yb + 14]], '#7b848c', 0.8); }
+        }
+      } });
+  }
 })(typeof window !== 'undefined' ? window : globalThis);

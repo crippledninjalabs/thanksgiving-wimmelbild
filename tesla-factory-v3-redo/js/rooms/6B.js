@@ -100,7 +100,7 @@
       for (const dx of [-18, 18]) D.rect(ctx, fc[0] + dx - 2, fc[1] + 12, 4, 9, '#2f7fd8');
       { const uu = TF.mod(t, 12); if (uu >= ln.QFIX.on[0] && uu < ln.QFIX.on[1]) ln.drawPiece(ctx, 'quarter', fc[0], fc[1], lod); }
       if (lod === 'far') return;
-      K.cabinet(ctx, 2276, hY(1.0), 22, 50, t, 5, lod);
+      K.cabinet(ctx, 2276, yF - 50, 22, 50, t, 5, lod);
       // weld-count lamps + current trace on the gantry leg screen
       const n = beadsDone(t);
       D.screen(ctx, X + 2.25 * M, hY(2.3), 22, 14, (x, y, w, h) => {

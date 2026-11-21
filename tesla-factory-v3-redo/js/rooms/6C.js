@@ -111,12 +111,12 @@
         done.forEach((d, k) => D.circle(ctx, x + 6 + k * 8, y + h - 3, 1.8, d ? '#4ade80' : '#334155'));
       });
       // status cabinet (background life, behind the car line)
-      K.cabinet(ctx, 2366, hY(0.92), 20, 46, t, 7, lod);
+      K.cabinet(ctx, 2366, yF - 46, 20, 46, t, 7, lod);
       // supply-air duct along the upper wall: fan box pushes fresh air to the bolting stations and out of the east vent
-      D.rect(ctx, 2322, hY(3.04), 425, 10, '#e3e7eb', '#9aa3ab', 1);
-      D.rect(ctx, 2700, hY(3.17), 30, 22, '#c9d0d6', '#7b848c', 1);
-      if (lod !== 'far') { D.fan(ctx, 2715, hY(2.95), 8, K.spin(t, 12, 0.6)); for (const x of [P1, P2 + 20]) D.poly(ctx, [[x - 8, hY(2.84)], [x + 8, hY(2.84)], [x + 5, hY(2.77)], [x - 5, hY(2.77)]], '#cfd5db', '#9aa3ab', 0.8); }
+      for (const x of [P1, P2 + 20]) { D.rect(ctx, x - 5, hY(4.88) + 6, 10, hY(2.84) - hY(4.88) - 6, '#e3e7eb', '#9aa3ab', 0.8); D.rect(ctx, x - 8, hY(4.88) + 6, 16, 3, '#9aa3ab');
+        D.poly(ctx, [[x - 8, hY(2.84)], [x + 8, hY(2.84)], [x + 5, hY(2.77)], [x - 5, hY(2.77)]], '#cfd5db', '#9aa3ab', 0.8); }
       // high wall vent (Shiba peek) near the east wall
+      D.rect(ctx, 2754, hY(4.88), 12, hY(3.17) - hY(4.88), '#e3e7eb', '#9aa3ab', 1); D.rect(ctx, 2751, hY(4.88) + 5, 18, 3, '#9aa3ab');
       D.rect(ctx, 2745, hY(3.17), 30, 9, '#c9d0d6', '#7b848c', 1);
       for (let k = 0; k < 4; k++) D.line(ctx, [[2749 + k * 7, hY(3.17) + 2], [2749 + k * 7, hY(3.17) + 7]], '#7b848c', 1);
       if (theme.decor.garland) theme.decor.garland(ctx, room.inner.x, room.inner.x + room.inner.w, room.inner.y, t, lod);

@@ -198,27 +198,26 @@
       const cu = TF.stage3.crewUp, hOpen = cu ? cu.hatch(t) : 0, cF = cu ? cu.closeFrac(t) : 1;
       D.rect(ctx, X0 - 2, yCargo - 88, 14, 88, '#1d2733');
       D.rect(ctx, X0 - 2, yCargo - 88, 14, 88 * (1 - hOpen), '#cbd5e1', '#64748b', 1);
-      if (cu) for (const r of cu.list(t)) if (r.st.x >= X0) A.draw(ctx, r.st, r.y);
+      if (cu) for (const r of cu.list(t)) if (r.st.x >= X0) { const f = A.draw(ctx, r.st, r.y); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); } }
       for (let i = 0; i < ALC.n; i++) {
         const c = i === ALC.pick ? cF : 1, ax = X0 + ALC.x0 + i * ALC.pitch, ay = yCargo - ALC.h;
         D.rect(ctx, ax, ay, ALC.w, ALC.h * c, '#e2e8f0', '#94a3b8', 1);
         D.circle(ctx, ax + ALC.w / 2, ay - 6, 2.6, c >= 1 ? '#4ade80' : '#f59e0b', '#14532d', 0.5);
       }
-      // loadmaster + food crate (24 s: crate in galley 0-8 and 20-24; down 8-12; new crate 12-16; up 16-20)
-      const crateInGalley = u < 8 || u >= 20;
-      const carryingUp = u >= 16 && u < 20, carryingDn = u >= 8 && u < 12, atDoor = u >= 12 && u < 16;
-      const lmY = carryingUp ? TF.lerp(yCargo, yGalley, TF.ramp(u, 16, 20))
-        : carryingDn ? TF.lerp(yGalley, yCargo, TF.ramp(u, 8, 12))
-        : atDoor ? yCargo : yGalley;
-      const lmX = atDoor ? CX + 40 : (carryingUp || carryingDn ? CX - 70 : CX - 20);
-      const lmFace = carryingUp ? -1 : 1;
-      const lmSt = (carryingUp || carryingDn || atDoor)
-        ? { x: lmX, face: lmFace, pose: A.carry(A.stand(), [0.3, 1.1], 0.35) }
-        : { x: lmX, face: -1, pose: A.idle(t) };
+      // loadmaster + food crate (24 s): continuous handoff with crewUp at ALCX (t%24=19.3), no teleport
+      // 0-7.5 galley, 7.5-8.5 walk to ladder, 8.5-11.5 down ladder, 11.5-13.5 walk to hatch, 13.5-15.5 walk to ALCX, 15.5-19.3 wait at ALCX, 19.3-20.5 walk to ladder w/ crate, 20.5-23.2 up ladder, 23.2-24 walk to galley
+      const alcX = X0 + ALC.x0 + ALC.pitch * ALC.pick + ALC.w / 2;
+      const lmY = u < 8.5 ? yGalley : u < 11.5 ? TF.lerp(yGalley, yCargo, TF.ramp(u, 8.5, 11.5)) : u < 20.5 ? yCargo : u < 23.2 ? TF.lerp(yCargo, yGalley, TF.ramp(u, 20.5, 23.2)) : yGalley;
+      const lmX = u < 7.5 ? CX - 20 : u < 8.5 ? TF.lerp(CX - 20, CX - 70, TF.ramp(u, 7.5, 8.5))
+        : u < 11.5 ? CX - 70 : u < 13.5 ? TF.lerp(CX - 70, CX + 40, TF.ramp(u, 11.5, 13.5))
+        : u < 15.5 ? TF.lerp(CX + 40, alcX + 18, TF.ramp(u, 13.5, 15.5)) : u < 19.28 ? alcX + 18
+        : u < 20.5 ? TF.lerp(alcX + 18, CX - 70, TF.ramp(u, 19.28, 20.5)) : u < 23.2 ? CX - 70 : TF.lerp(CX - 70, CX - 20, TF.ramp(u, 23.2, 24));
+      const carry = (u >= 7.5 && u < 13.5) || u >= 19.28;
+      const lmFace = (u >= 11.5 && u < 13.5) || u >= 19.28 ? 1 : -1;
+      const lmSt = carry ? { x: lmX, face: lmFace, pose: A.carry(A.stand(), [0.3, 1.1], 0.35) } : { x: lmX, face: lmFace, pose: A.idle(t) };
       A.draw(ctx, lmSt, lmY);
-      const crateY = crateInGalley ? yGalley : (carryingUp || carryingDn || atDoor) ? lmY : yGalley;
-      const crateX = crateInGalley ? CX - 10 : lmX + 8;
-      if (crateInGalley || carryingUp || carryingDn || atDoor) IT.foodcrate(ctx, crateX, crateY);
+      if (u < 7.5) IT.foodcrate(ctx, CX - 10, yGalley);
+      else if (carry) IT.foodcrate(ctx, lmX + lmFace * 8, lmY - 30);
     } });
 
   TF.flows.push(

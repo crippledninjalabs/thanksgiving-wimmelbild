@@ -66,7 +66,7 @@
       D.line(ctx, [[3700, hY(1.0) - r], [3640, hY(0.9)], [3610, hY(0.9)]], '#c9ccd0', 2.5);
       X.press(ctx, 3610, yF, 1.0, 2.4, Math.max(...strokes.map(([a, b]) => TF.pulse(s, a, b, 0.35))), lod);
       D.rect(ctx, 3720, hY(0.3), 20, 0.3 * M, '#5b8fc9');
-      K.cabinet(ctx, 3290, hY(1.0), 20, 48, t, 51, lod);
+      K.cabinet(ctx, 3290, yF - 48, 20, 48, t, 51, lod);
     },
     draw() {}, front() {} });
 
@@ -80,10 +80,11 @@
     back(ctx, t, theme, lod) {
       rollers(ctx, 2800, 3270, t, lod);
       X.upper(ctx, yF, ceil, t, lod, { duct: [3120, 3260, 4.1], fans: [3200], pipes: [2810, 3100, 3.9], valves: [2900, 3050], lamps: [2900, 3150] });
+      D.rect(ctx, 3218, hY(4.55), 10, hY(4.1) - 20 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 3210, hY(4.1) - 20, 26, 9, '#c9d0d6', '#7b848c', 1);                                  // vent box (Shiba peek)
       D.rect(ctx, ST.D - 2.6 * M, hY(2.9) - 6, 4.6 * M, 6, '#9aa3ab', '#6d757d', 1);
       for (const x of [ST.D - 2.6 * M, ST.D + 2.0 * M]) D.rect(ctx, x, hY(2.9), 6, 2.9 * M, '#b3bac1');
-      K.cabinet(ctx, 2810, hY(1.0), 20, 48, t, 53, lod);
+      K.cabinet(ctx, 2810, yF - 48, 20, 48, t, 53, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -138,7 +139,7 @@
       X.rack(ctx, RACK - 10, yF, 0.5, 1.2, 2, 2, (c, x, y) => IT.pane(c, x + 4, y), lod);
       D.rect(ctx, 2755, hY(0.35), 22, 0.35 * M, '#6b7280', '#374151', 0.8);
       D.rect(ctx, BUCKET - 8, hY(0.3), 16, 0.3 * M, '#9aa3ab', '#5d656d', 0.8);
-      K.cabinet(ctx, 2330, hY(1.0), 20, 48, t, 55, lod);
+      K.cabinet(ctx, 2330, yF - 48, 20, 48, t, 55, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -165,10 +166,12 @@
       X.liftTable(ctx, ST.B, yF, 2.0, 0.08 + 0.26 * k, lod);
       if (u < 2.2) D.rect(ctx, TF.lerp(TF.PB.XU + 30, ST.B, TF.ramp(u, 0.1, 1.0)) - 60, yF - (0.13 + 0.26 * k) * M, 120, 5, '#2a2e33', '#111', 0.6);
       // Semi pack: waits on the exit table, then the roller carries it through D2AB to the table in 2A (12.0-12.6)
+      D.rect(ctx, 1884, hY(0.45) + 4, 4, yF - (hY(0.45) + 4), '#6d757d');
+      D.rect(ctx, 1932, hY(0.45) + 4, 4, yF - (hY(0.45) + 4), '#6d757d');
       D.rect(ctx, 1880, hY(0.45), 60, 4, '#7b848c');
       const us = TF.mod(s - pbS.te, 24); if (us < TF.mod(12.0 - pbS.te, 24)) D.rect(ctx, 1882, hY(0.45) - 10, 56, 10, '#2a2e33', '#111', 0.6);
       D.rect(ctx, 2262 - 0.44 * M - 2, hY(0.6), 0.44 * M + 14, 0.6 * M, '#2f6fb0', '#1d4570', 1); if (lod !== 'far') IT.wheels(ctx, 2262, hY(0.6), 0.44 * M);
-      K.cabinet(ctx, 2280, hY(1.7), 18, 30, t, 57, lod);
+      K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 57, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -223,7 +226,7 @@
       // Semi pack: roller from 2B (12.0-12.6), lift into the frame 13.6-14.6
       if (s >= 12.0 && s < 14.6) { const x = TF.lerp(1900, ST.T, TF.ramp(s, 12.0, 12.6)), y = TF.lerp(hY(0.45), hY(0.86), TF.ramp(s, 13.6, 14.6)); D.rect(ctx, x - 40, y - 32, 80, 32, '#2a2e33', '#111', 0.8); }
       D.screen(ctx, 1770, hY(2.3), 26, 16, (x, y, w, h) => { const d = tableD(t); D.rect(ctx, x + 3, y + 3 + (h - 6) * d / 300, w - 6, 3, '#fbbf24'); });
-      K.cabinet(ctx, 1365, hY(2.4), 18, 30, t, 59, lod);
+      K.cabinet(ctx, 1365, yF - 46, 18, 46, t, 59, lod);
       D.rect(ctx, 1795, hY(3.2) - 4, 20, 5, '#7b848c');
     },
     draw() {},

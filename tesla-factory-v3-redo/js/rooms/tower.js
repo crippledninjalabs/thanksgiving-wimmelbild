@@ -13,8 +13,9 @@
   // A: 0-6 wait BR, 6-7 take ring, 7-11 down to G, 11-12 ring onto transporter, 12-16 to ENG,
   //    16-22 pull old Raptor, 22-24 up to BR
   // B: 0-6 wait, 6-7 swap, 7-8 down to ENG, 8-13 install, 13-14 up to BR, 14-24 parked
+  const yRingG = G0 - 36 - 1.3 * M;
   const csY = (u) => TF.keys(u, [
-    [0, yBR], [6, yBR], [7, yBR], [11, yG - 40], [12, yG - 40], [16, yENG], [22, yENG], [24, yBR],
+    [0, yBR], [6, yBR], [7, yBR], [11, yRingG], [12, yRingG], [16, yENG], [22, yENG], [24, yBR],
     [30, yBR], [31, yBR], [32, yENG], [37, yENG], [38, yBR], [48, yBR]
   ]);
   // ---- finished odd Optimus (hand-off from 7C robotAt at t mod 24 = 20.5): sky-bridge -> TL -> CG -> arm -> ship alcove ----
@@ -23,7 +24,8 @@
   const ALCX = SB.x + ALC.x0 + ALC.pitch * ALC.pick + ALC.w / 2;
   const crewA = (t) => TF.mod(t - CR0, 24);
   const idleF = (tl) => A.idle(tl);
-  const crewSegs = [A.walk(14, 3800, CARX, { step: 0.62 }), A.hold(5.6, CARX, 1, idleF), A.walk(3.4, CARX, ALCX, { step: 0.6 }), A.hold(2.5, ALCX, 1, idleF)];
+  const fcC = [0.35, 1.05], fcIdle = (tl) => A.carry(A.idle(tl), fcC, 0.3);
+  const crewSegs = [A.walk(14, 3800, CARX, { step: 0.62, carry: fcC, carryW: 0.3 }), A.hold(5.6, CARX, 1, fcIdle), A.walk(3.4, CARX, ALCX, { step: 0.6, carry: fcC, carryW: 0.3 }), A.hold(2.5, ALCX, 1, idleF)];
   const carY = (a) => {   // TL car y vs a (24 s period): G rest, up to BR for the robot, ride to CG, back down to G
     if (a < 2.6) return TF.lerp(yCG, yG - 8, TF.ramp(a + 24, 20.6, 26.6));
     if (a < 8) return yG - 8;
@@ -43,7 +45,7 @@
   const crewAt = (a, t0) => {   // t0 = absolute start time of this robot's 24 s walk
     if (a < 0 || a >= 25.5) return null;
     const gag = TF.fortyTwo(t0 + 15).k === 1;
-    return { st: A.run(gag ? crewSegsG : crewSegs, a, 0.25, false), y: a < 14 ? yBR : a < 19.6 ? carY(a) : yCG, gag };
+    return { st: A.run(gag ? crewSegsG : crewSegs, a, 0.25, false), y: a < 14 ? yBR : a < 19.6 ? carY(a) : yCG, gag, fc: !gag && a < 22.78 };
   };
   TF.stage3.crewUp = {
     list: (t) => { const a = crewA(t), r = [crewAt(a, t - a), crewAt(a + 24, t - a - 24)]; return r.filter(Boolean); },
@@ -104,7 +106,7 @@
       D.rect(ctx, T.x + 8, T.y + 10, 8, T.h - 20, '#94a3b8', '#334155', 1);
       const cy = csY(u48);
       // chopsticks arms (two prongs)
-      const reach = 90;
+      const reach = 30;
       D.rect(ctx, T.x + 4, cy - 14, 16, 28, '#64748b', '#1e293b', 1);
       D.line(ctx, [[T.x + 20, cy - 8], [T.x + 20 + reach, cy - 8]], '#475569', 5);
       D.line(ctx, [[T.x + 20, cy + 8], [T.x + 20 + reach, cy + 8]], '#475569', 5);
@@ -115,6 +117,12 @@
       const newRaptorOnCS = (u48 >= 31 && u48 < 37);       // B 7-13: serviced raptor to ENG
       const oldRaptorOnCS = (u48 >= 16 && u48 < 31);       // A 16-B 7: old raptor up to BR
       const hx = T.x + 20 + reach - 10;
+      if (u48 >= 6 && u48 < 7) {   // bridge transfer: trolley deck -> CS prongs
+        const k = TF.ramp(u48, 6, 7), rx = TF.lerp(4490, hx, k), ry = TF.lerp(yBR - 12 - 1.3 * M, yBR, k);
+        ctx.beginPath(); ctx.arc(rx, ry, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.beginPath(); ctx.arc(rx, ry, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
+        if (lod !== 'far') IT.crate(ctx, rx, ry + 8);
+      }
       if (ringOnCS) {
         ctx.beginPath(); ctx.arc(hx, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
         ctx.beginPath(); ctx.arc(hx, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
@@ -126,7 +134,7 @@
       const armY = yCG - 20, armL = 50 + 26 * (TF.ramp(u, 9.5, 10.5) - TF.ramp(u, 18.6, 19.6));
       D.rect(ctx, T.x + T.w, armY - 5, armL, 10, '#7b848c', '#2b2f34', 1);
       D.rect(ctx, T.x + T.w, yCG, armL, 5, '#9aa3ab', '#2b2f34', 0.8);   // walkway
-      if (lod !== 'far') for (const r of TF.stage3.crewUp.list(t)) if (r.st.x < SB.x) { const f = A.draw(ctx, r.st, r.y); if (r.gag) TF.gag42.held(ctx, t, 'crew', f); }
+      if (lod !== 'far') for (const r of TF.stage3.crewUp.list(t)) if (r.st.x < SB.x) { const f = A.draw(ctx, r.st, r.y); if (r.gag) TF.gag42.held(ctx, t, 'crew', f); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); } }
       TF.gag42.world(ctx, t, lod, ty);   // 42 plate: skirt / falling / pile / TL car, mallet, clang
 
       // tile pile at G + fit-check fixture by the booster QD; the tile Optimus carries the top tile there and back
@@ -148,26 +156,25 @@
   TF.transport({ id: 'Ring-transporter', period: 48, layer: 'main', box: { x: 4300, y: G0 - 140, w: 1000, h: 160 },
     draw(ctx, t, theme, lod) {
       const u = s48(t);
-      // x: off east, arrives A 4-8 empty, parks at tower base 8-40 (A8-B16), leaves B 16-20, gone 20-52
-      const x = TF.keys(u, [[0, 4580], [4, 4580], [8, 4580], [16, 4580], [40, 4580], [44, 5400], [48, 5400],
-        /* wrap: after leave at 44 it's off; next arrival is +48+4. keys are in 0-48; for 0-4 it's already parked from previous? */
-      ]);
-      // Simpler explicit windows
-      let tx = null, hasRing = false, hasCrates = false;
-      if (u >= 4 && u < 8) tx = TF.lerp(5400, 4580, TF.ramp(u, 4, 8));           // return empty
-      else if (u >= 8 && u < 40) { tx = 4580; hasRing = u >= 12; hasCrates = u >= 14 && u < 24 + 14; }
-      else if (u >= 40 && u < 44) { tx = TF.lerp(4580, 5400, TF.ramp(u, 40, 44)); hasRing = true; hasCrates = true; }
-      if (tx == null || tx > 5350) return;
-      // flatbed + cab
+      // parked 47.5-19.5 (ring aboard 12-19.5), leaves east behind the mount 19.5-23.5, returns empty 43.5-47.5 (clear of the fuel truck, s24 19-24)
+      let tx, hasRing = false;
+      if (u >= 43.5 && u < 47.5) tx = TF.lerp(5400, 4580, TF.ramp(u, 43.5, 47.5));
+      else if (u >= 47.5 || u < 19.5) { tx = 4580; hasRing = u >= 12 && u < 19.5; }
+      else if (u < 23.5) { tx = TF.lerp(4580, 5400, TF.ramp(u, 19.5, 23.5)); hasRing = true; }
+      else return;
+      if (tx > 5350) return;
+      ctx.save(); ctx.beginPath(); ctx.rect(4000, G0 - 300, 720, 350); ctx.rect(5050, G0 - 300, 600, 350); ctx.clip();
       D.rect(ctx, tx - 80, G0 - 36, 140, 20, '#64748b', '#1e293b', 1);
       D.rect(ctx, tx + 60, G0 - 50, 40, 34, '#475569', '#1e293b', 1);
       D.rect(ctx, tx + 68, G0 - 44, 16, 10, '#bae6fd', '#64748b', 0.6);
       D.circle(ctx, tx - 50, G0 - 8, 8, '#1f2937'); D.circle(ctx, tx + 20, G0 - 8, 8, '#1f2937'); D.circle(ctx, tx + 80, G0 - 8, 8, '#1f2937');
       if (hasRing) {
-        ctx.beginPath(); ctx.arc(tx - 10, G0 - 50, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
-        ctx.beginPath(); ctx.arc(tx - 10, G0 - 50, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
+        const cy = G0 - 36 - 1.3 * M;
+        ctx.beginPath(); ctx.arc(tx + 20, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.beginPath(); ctx.arc(tx + 20, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
+        if (lod !== 'far') IT.crate(ctx, tx + 20, cy + 8);
       }
-      if (hasCrates) { IT.crate(ctx, tx + 30, G0 - 36); IT.foodcrate(ctx, tx + 48, G0 - 36); }
+      ctx.restore();
     } });
 
   TF.flows.push(

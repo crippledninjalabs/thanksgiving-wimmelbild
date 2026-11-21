@@ -57,7 +57,7 @@
       D.rect(ctx, 3497, py, 246, 8, '#e0a43a', '#9a6b1c', 1); ctx.restore();
       X.upper(ctx, yF, ceil, t, lod, { duct: [3290, 3470, 3.9], fans: [3330], tray: [3290, 3470, 3.3], lamps: [3330, 3420] });
       // glass rack (panes from the shuttle), lamp receiver + inserter arm, light-test screen
-      D.rect(ctx, 3430, hY(2.1), 40, 3, '#8a939b'); D.rect(ctx, 3432, hY(2.1), 3, 1.2 * M, '#8a939b');
+      D.rect(ctx, 3430, hY(2.1), 40, 3, '#8a939b'); D.rect(ctx, 3432, hY(2.1), 3, 2.1 * M, '#8a939b'); D.rect(ctx, 3430, hY(1.2), 40, 3, '#8a939b'); D.rect(ctx, 3428, yF - 3, 12, 3, '#8a939b');
       if (lod !== 'far') for (let i = 0; i < 2 + Math.floor(TF.mod(t - 10.9, 24) / 12); i++) IT.pane(ctx, 3445 + i * 8, hY(1.2));
       D.rect(ctx, 3532, hY(1.75), 18, 16, '#dfe4e8', '#7b848c', 1);
       if (lod !== 'far') { const lamps = 4 - Math.floor(TF.mod(t - (R.lamps.arrive(0) + 0.3), 48) / 12); for (let i = 0; i < lamps; i++) IT.lamp(ctx, 3541, hY(1.75) - 2 - i * 5); }
@@ -65,7 +65,7 @@
       K.arm(ctx, [3560, yF], tip, { l1: 34, l2: 30, toolAng: Math.PI - 0.3, bend: -1, tool: 8 });
       if (s >= 5.6 && s < 6.9 && lod !== 'far') IT.lamp(ctx, tip[0], tip[1] + 3);
       D.screen(ctx, 3290, hY(2.6), 30, 16, (x, y, w, h) => { const c = chain.inWindow(t, 1.0, 9.5); if (c && c.lit) { D.circle(ctx, x + 8, y + 8, 3, '#fde68a'); D.circle(ctx, x + 22, y + 8, 3, '#f87171'); } });
-      K.cabinet(ctx, 3300, hY(1.0), 20, 48, t, 21, lod);
+      K.cabinet(ctx, 3300, yF - 48, 20, 48, t, 21, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -88,6 +88,7 @@
     back(ctx, t, theme, lod) {
       station(ctx, 2800, 3270, t, lod);
       X.upper(ctx, yF, ceil, t, lod, { duct: [2810, 2950, 4.0], fans: [2850], pipes: [3050, 3260, 3.4], valves: [3120, 3220], lamps: [2860, 3150] });
+      D.rect(ctx, 3088, hY(4.55), 10, hY(4.06) - 7 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 3080, hY(4.06) - 7, 26, 9, '#c9d0d6', '#7b848c', 1);                               // vent box (Shiba peek)
       // seat stock rack (refilled from the seats basket), overhead seat hoist on its beam
       const left = 2 - Math.floor(TF.mod(t - 10.9 - 2.3, 24) / 12) + 0;
@@ -95,7 +96,7 @@
       const s = sOf(t), hx = HOIST(s), hy = hook(s);
       X.hoist(ctx, hx, hY(2.7), hy, 2860, 3040);
       if (s >= 2.3 && s < 5.0 && lod !== 'far') { if (s >= 4.3) { ctx.save(); ctx.beginPath(); ctx.rect(hx - 40, hY(1.55), 80, 30); ctx.clip(); IT.seat(ctx, hx, hy + 14); ctx.restore(); } else IT.seat(ctx, hx, hy + 14); }
-      K.cabinet(ctx, 3220, hY(1.0), 22, 48, t, 23, lod);
+      K.cabinet(ctx, 3220, yF - 48, 22, 48, t, 23, lod);
     },
     draw() {}, front() {} });
 
@@ -116,7 +117,7 @@
       const s = sOf(t), lt = 0.24 * (TF.ramp(s, 1.2, 2.0) - TF.ramp(s, 8.8, 9.5));
       X.liftTable(ctx, ST.C, yF, 2.2, 0.33 + lt, lod);
       for (const x of [ARMF[0] + 20, ARMR[0] - 20]) { D.rect(ctx, x - 0.37 * M - 2, hY(0.6), 0.74 * M + 4, 0.6 * M, '#2f6fb0', '#1d4570', 1); if (lod !== 'far') IT.wheels(ctx, x, hY(0.6)); }
-      K.cabinet(ctx, 2700, hY(1.0), 20, 46, t, 25, lod);
+      K.cabinet(ctx, 2700, yF - 46, 20, 46, t, 25, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -155,7 +156,7 @@
       const p = packX(t), lt = p ? p.up : 0;
       X.liftTable(ctx, ST.B, yF, 2.0, 0.08 + 0.2 * lt, lod);
       if (p) D.rect(ctx, p.x - 52, yF - (0.13 + 0.2 * lt) * M, 104, 5, '#2a2e33', '#111', 0.6);
-      K.cabinet(ctx, 2240, hY(1.0), 22, 48, t, 27, lod);
+      K.cabinet(ctx, 2240, yF - 48, 22, 48, t, 27, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; A.draw(ctx, ob(t), yF); } });
@@ -174,7 +175,7 @@
       if (lod !== 'far' && s >= 1.5 && s < 3.0) { const k = TF.ramp(s, 2.0, 3.0); IT.computer(ctx, TF.lerp(1560, ST.A + 0.9 * M, k), TF.lerp(hY(1.6), hY(1.05), k)); }
       D.line(ctx, [[1560, hY(1.6)], [ST.A + 0.9 * M, hY(1.05)]], '#9aa3ab', 1.5);
       D.screen(ctx, 1640, hY(2.4), 32, 20, (x, y, w, h) => { const c = chain.inWindow(t, 48, 57.7); if (c && c.screen) { D.rect(ctx, x + 3, y + 3, (w - 6) * c.screen, h - 6, '#0ea5e9'); D.tLogo(ctx, x + w / 2, y + h / 2, 8, '#ffffff'); } });
-      K.cabinet(ctx, 1600, hY(1.0), 20, 48, t, 29, lod);
+      K.cabinet(ctx, 1600, yF - 48, 20, 48, t, 29, lod);
     },
     draw() {}, front() {} });
 

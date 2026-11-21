@@ -11,7 +11,7 @@
   const RR = 1.3 * M;   // ring radius (face-on, cartoon scale)
 
   // ---------- ring (48 s): coil 5.75 -> dolly to 8B 6.4-9, rolled 9-30, to 8C 30-34, weld 34-40, X-ray 40-43, to 8E 43-47.5, trolley 48+0-6 ----------
-  const ringX = (u) => TF.keys(u, [[30, 2050], [34, 2560], [43, 2560], [47.5, 3420], [48.3, 3420], [54, 4490]]);
+  const ringX = (u) => TF.keys(u, [[30, 2050], [34, 2560], [43, 2560], [47.5, 3420], [49, 3420], [54, 4490]]);
   const ring = (ctx, x, y, arc, bead, xray, lod) => {
     const a0 = -Math.PI / 2 + 0.15, a1 = a0 + arc * (Math.PI * 2 - 0.3);
     ctx.beginPath(); ctx.arc(x, y - RR, RR, a0, a1); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 9; ctx.stroke();
@@ -30,10 +30,10 @@
       // ring life: this cycle's (u) and last cycle's on the trolley (u + 48)
       for (const v of [u, u + 48]) {
         if (v < 9 || v >= 54) continue;
-        const arc = TF.clamp((v - 9) / 21, 0.02, 1), x = v < 30 ? 2050 : ringX(v), y = v >= 48 ? yF - 14 : yF - 9;
+        const arc = TF.clamp((v - 9) / 21, 0.02, 1), x = v < 30 ? 2050 : ringX(v), y = v < 46.8 ? yF - 9 : v < 47.5 ? TF.lerp(yF - 9, yF - 12, TF.ramp(v, 46.8, 47.5)) : yF - 12;
         if (x > L.X1 + 10) { ctx.save(); ctx.beginPath(); ctx.rect(L.X1 - 10, ceil, 900, 320); ctx.clip(); }
         ring(ctx, x, y, arc, TF.lin(v, 34, 40), v >= 40.5 && v < 43, lod);
-        if (v >= 46 && lod !== 'far') IT.crate(ctx, x, y - RR + 8);   // tile crate packed inside the ring
+        if (v >= 47.8 && lod !== 'far') IT.crate(ctx, x, y - RR + 8);   // tile crate packed inside the ring
         if (x > L.X1 + 10) ctx.restore();
       }
     } });
@@ -62,15 +62,18 @@
     back(ctx, t, theme, lod) {
       const s = s24(t);
       X.upper(ctx, yF, ceil, t, lod, { duct: [1400, 1600, 4.3], fans: [1450], pipes: [1360, 1820, 3.6], valves: [1500, 1780], lamps: [1500, 1700] });
+      D.rect(ctx, 1568, hY(4.55), 10, hY(4.3) - 20 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);   // collar up to the floor trunk
       D.rect(ctx, 1560, hY(4.3) - 20, 26, 9, '#c9d0d6', '#7b848c', 1);                              // vent box (Shiba peek)
       X.press(ctx, 1555, yF, 0.8, 1.9, TF.pulse(s, 5.3, 6.6, 0.3), lod);
       D.rect(ctx, KILN[0], hY(1.6), KILN[1] - KILN[0], 1.6 * M, '#7d4b3a', '#4a2a20', 1.2);
       const door = TF.pulse(s, 9.7, 12.2, 0.3), glow = 0.5 + 0.2 * Math.sin(t * Math.PI);
       D.rect(ctx, KILN[0] + 10, hY(1.3), 60, 0.8 * M, '#2b1b16'); ctx.globalAlpha = glow; D.rect(ctx, KILN[0] + 12, hY(1.28), 56, 0.76 * M, '#ff7a2a'); ctx.globalAlpha = 1;
       D.rect(ctx, KILN[0] + 8, hY(1.32) - door * 30, 64, 0.84 * M, '#5d3428');
+      D.rect(ctx, 1754, hY(0.95) + 4, 4, yF - (hY(0.95) + 4), '#8a939b');
+      D.rect(ctx, 1792, hY(0.95) + 4, 4, yF - (hY(0.95) + 4), '#8a939b');
       D.rect(ctx, 1750, hY(0.95), 50, 4, '#9aa3ab'); if (lod !== 'far') { tile(ctx, 1770, hY(0.95), true); if (s >= 17 || s < 1) tile(ctx, 1786, hY(0.95), true); }
       K.wisp(ctx, KILN[0] + 50, hY(1.6), t, 3, lod, 0.2, '#f3f4f6', 24);
-      K.cabinet(ctx, 1370, hY(1.8), 18, 30, t, 81, lod);
+      K.cabinet(ctx, 1370, yF - 46, 18, 46, t, 81, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; const s = s24(t), st = tileOpt(t), f = A.draw(ctx, st, yF), w = f.w(f.sk.wristN);
@@ -91,7 +94,7 @@
       for (const [dx, dy] of [[0, 0.2], [-14, 0.45], [14, 0.45]]) { D.circle(ctx, 1970 + dx, hY(dy), 6, '#9aa1a8', '#4a5056', 1);
         if (on && lod !== 'far') { const a = t * Math.PI * 2; D.line(ctx, [[1970 + dx, hY(dy)], [1970 + dx + Math.cos(a) * 5, hY(dy) + Math.sin(a) * 5]], '#e5e7eb', 1); } }
       if (on) D.line(ctx, [[1880, hY(0.7) - r], [1970, hY(0.3)], [2050, yF - 9]], '#c3c9cf', 2.5);
-      K.cabinet(ctx, 2280, hY(1.0), 18, 46, t, 83, lod);
+      K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 83, lod);
     },
     draw() {}, front() {} });
 
@@ -106,7 +109,7 @@
       D.line(ctx, [[2470, yF], [2470, hY(3.0)], [2650, hY(3.0)], [2650, yF]], pass ? '#4ade80' : '#9aa3ab', 4);
       D.rect(ctx, 2540, hY(3.0) - 10, 40, 10, '#5f6b77');
       D.rect(ctx, 2300 + 380, hY(3.6) - 4, 40, 4, '#7b848c');
-      K.cabinet(ctx, 2340, hY(1.0), 18, 46, t, 85, lod);
+      K.cabinet(ctx, 2340, yF - 46, 18, 46, t, 85, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -156,11 +159,15 @@
       X.hoist(ctx, RX + (u >= 38 && u < 41 ? 0 : 0), hY(3.6), u >= 37 || u < 6 ? hY(3.0) : hY(3.4), 2850, 3250);
       D.rect(ctx, RX - 40, yF - 8, 80, 8, '#7b848c');
       if (u >= 37 || u < 24.5) raptor(ctx, RX, yF - 8, rstate(u), lod);
+      { const rs = rstate(u), tw = TF.elonTour && TF.elonTour.at8D(t);                                                                // Raptor diagnostic pedestal
+        D.rect(ctx, 2975, hY(1.4), 18, 1.4 * M, '#475569', '#1e293b', 1); D.rect(ctx, 2978, hY(1.35), 12, 8, '#0f172a', '#64748b', 1);
+        D.rect(ctx, 2979, hY(1.35) + 5, 10 * (rs && rs.pump ? 1 : 0.4), 2, tw ? '#4ade80' : '#38bdf8');
+        D.circle(ctx, 2991, hY(1.2), 3, '#0f172a', '#94a3b8', 1); D.line(ctx, [[2991, hY(1.2)], [2991 - (tw ? 9 : 3), hY(1.2) + (tw ? 6 : -8)]], '#e2e8f0', 2); }
       D.rect(ctx, 3050, hY(1.75), 20, 16, '#dfe4e8', '#7b848c', 1);
       // new turbopump waits on the receiver until the tech picks it up at 43; scrap tote holds the old one until the basket run
       if (lod !== 'far' && (u < 43 || u >= 46.5)) D.circle(ctx, 3060, hY(1.75) - 2, 9, '#cbd5e1', '#2b2f34', 1);
       if (u >= 43 || u < 12.5) { D.rect(ctx, 3010, yF - 14, 22, 14, '#7d5a2c', '#4a3420', 1); if (lod !== 'far' && (u >= 43 || u < 12.5)) D.circle(ctx, 3021, yF - 18, 7, '#78716c', '#2b2f34', 1); }
-      K.cabinet(ctx, 2820, hY(1.0), 18, 46, t, 87, lod);
+      K.cabinet(ctx, 2820, yF - 46, 18, 46, t, 87, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -190,11 +197,29 @@
       K.beacon(ctx, 3735, hY(3.2), t, (u < 1) || (u >= 24 && u < 25), '#4ade80');
       D.rect(ctx, tx - 40, yF - 12, 80, 8, '#5f6b77', '#2b2f34', 1); D.circle(ctx, tx - 30, yF - 4, 4, '#1d1f22'); D.circle(ctx, tx + 30, yF - 4, 4, '#1d1f22');
       if ((u >= 24 && u < 36) || (u >= 36 && u < 37)) { const st = u < 30 ? { nozzle: 1, pump: 'new', inj: true } : { nozzle: 1, pump: 'old', inj: true }; ctx.save(); ctx.beginPath(); ctx.rect(3280, ceil, 1300, 330); ctx.clip(); raptor(ctx, tx, yF - 12, st, lod); ctx.restore(); }
-      // food-crate shelf: unloaded from the basket at its stop, taken by the passing crew-up robot (~17.6)
-      const w = R.foodCrate.window(0, 0), s = s24(t), on = TF.mod(s - TF.mod(w[0] + 0.6, 24), 24) < TF.mod(17.6 - w[0] - 0.6, 24);
-      D.rect(ctx, 3480, hY(1.0), 40, 4, '#9aa3ab'); if (on) IT.foodcrate(ctx, 3500, hY(1.0));
-      K.arm(ctx, [3330, yF], [TF.lerp(3360, tx, TF.pulse(u, 46, 48, 0.5)), hY(1.6)], { l1: 46, l2: 42, toolAng: Math.PI / 2, bend: 1, tool: 6 });
-      K.cabinet(ctx, 3300, hY(2.0), 16, 30, t, 89, lod);
+      // food-crate shelf: unloaded from the basket at its stop, picked up by the passing crew-up robot at t%24 = 18.0
+      const w = R.foodCrate.window(0, 0), s = s24(t), on = TF.mod(s - TF.mod(w[0] + 0.6, 24), 24) < TF.mod(18.0 - w[0] - 0.6, 24) - 0.02;
+      { const go = (u < 1) || (u >= 24 && u < 25) || dOpen > 0.3, pull = TF.elonTour && TF.elonTour.at8E(t);                          // sky-bridge control pedestal
+        D.rect(ctx, 3702, hY(1.55), 30, 1.55 * M, '#475569', '#1e293b', 1); D.rect(ctx, 3708, hY(1.5), 18, 8, '#0f172a', '#64748b', 1);
+        K.beacon(ctx, 3717, hY(1.5) + 4, t, go, '#4ade80');
+        D.circle(ctx, 3704, hY(1.35), 3, '#0f172a', '#94a3b8', 1); D.line(ctx, [[3704, hY(1.35)], [3704 + (pull ? 10 : 2), hY(1.35) + (pull ? 9 : -9)]], '#e2e8f0', 2); }
+      D.rect(ctx, 3644, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
+      D.rect(ctx, 3672, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
+      D.rect(ctx, 3640, hY(1.0), 40, 4, '#9aa3ab'); if (on) IT.foodcrate(ctx, 3660, hY(1.0));
+      // tile crate: staging table by the loader arm; arm carries it into the waiting ring (47.8)
+      const uDrop = TF.mod(R.tiles.window(0, 0)[0] + 0.6, 48), idle = [3350, hY(1.6)], pick = [3365, hY(1.0)], drop = [3420, yF - 12 - RR + 8];
+      D.rect(ctx, 3355, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b'); D.rect(ctx, 3371, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
+      D.rect(ctx, 3352, hY(1.0), 26, 4, '#9aa3ab');
+      if (u >= uDrop && u < 46.8) IT.crate(ctx, 3365, hY(1.0));
+      const mix = (a, b, k) => [TF.lerp(a[0], b[0], k), TF.lerp(a[1], b[1], k)];
+      let tip = idle;
+      if (u >= 46 && u < 46.8) tip = mix(idle, pick, TF.ramp(u, 46, 46.8));
+      else if (u >= 46.8 && u < 47.8) tip = mix(pick, [drop[0], drop[1] - 4], TF.ramp(u, 46.8, 47.8));
+      else if (u >= 47.8) tip = mix([drop[0], drop[1] - 4], idle, TF.ramp(u, 47.8, 48.8));
+      else if (u < 0.8) tip = mix([drop[0], drop[1] - 4], idle, TF.ramp(u + 48, 47.8, 48.8));
+      K.arm(ctx, [3330, yF], tip, { l1: 46, l2: 42, toolAng: Math.PI / 2, bend: 1, tool: 6 });
+      if (u >= 46.8 && u < 47.8 && lod !== 'far') IT.crate(ctx, tip[0], tip[1] + 4);
+      K.cabinet(ctx, 3300, yF - 46, 16, 46, t, 89, lod);
     },
     draw() {}, front() {} });
 

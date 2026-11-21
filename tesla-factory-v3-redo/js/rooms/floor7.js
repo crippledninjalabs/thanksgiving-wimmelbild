@@ -12,7 +12,12 @@
 
   // ---------- product robots ----------
   const standPose = A.reach([-0.32, 1.22], [-0.38, 1.18], { gripN: 0.3, gripF: 0.3 });
-  const W7D = A.walk(3.0, STAND, PAD, { step: 0.55 }), WEVEN = A.walk(17.6, PAD, CHUTE + 8, { step: 0.62 }), WODD = A.walk(5.5, PAD, STAIR[0], { step: 0.6 }), W8 = A.walk(3.5, STAIR[1], 3800, { step: 0.6 });
+  const fcCarry = [0.35, 1.05];
+  const W7D = A.walk(3.0, STAND, PAD, { step: 0.55 }), WEVEN = A.walk(17.6, PAD, CHUTE + 8, { step: 0.62 }), WODD = A.walk(5.5, PAD, STAIR[0], { step: 0.6 });
+  const W8segs = [A.walk(0.8, STAIR[1], 3670, { step: 0.5 }),
+    A.keyed(0.6, 3670, -1, [[0, A.stand()], [0.4, A.reach([0.4, 0.95], [0.25, 0.95], { lean: 0.15, gripN: 0.9, gripF: 0.9 })], [1, A.carry(A.stand(), fcCarry, 0.3)]]),
+    A.turn(0.3, 3670, -1, () => A.carry(A.stand(), fcCarry, 0.3)),
+    A.walk(1.8, 3670, 3800, { step: 0.65, carry: fcCarry, carryW: 0.3 })];
   const walkLoop = C.walk('optimus');
   const robotAt = (a, even) => {   // -> {x, y, face, pose, stage}
     if (a < 9) return { x: STAND, y: yF, face: 1, pose: standPose, build: a };
@@ -24,7 +29,7 @@
       return a < 39 ? { x: CHUTE + 8, y: yF, face: -1, pose: RG.blend(A.stand(), A.reach([0.35, 0.75], [0.2, 0.8], { hipY: 0.45, lean: -0.2 }), TF.ramp(a, 38.6, 39)) } : null; }
     if (a < 26.5) { const st = WODD.f((a - 21) / 5.5, a - 21); return { x: st.x, y: yF, face: 1, pose: st.pose }; }
     if (a < 29) { const k = (a - 26.5) / 2.5; return { x: TF.lerp(STAIR[0], STAIR[1], k), y: TF.lerp(yF, yF8, k), face: 1, pose: walkLoop.sample(k * 2) }; }
-    if (a < 32.5) { const st = W8.f((a - 29) / 3.5, a - 29); return { x: st.x, y: yF8, face: 1, pose: st.pose }; }
+    if (a < 32.5) { const st = A.run(W8segs, a - 29, 0.1, false); return { x: st.x, y: yF8, face: st.face, pose: st.pose, fc: a >= 30.0 }; }
     return null; };
   // build stages on the stand (age): legs 0.5, torso 2.0, pack 3.0, arms 4.5, head 6.0, shells 7.5, computer 8.3
   const drawBuild = (ctx, r, a, lod) => {
@@ -47,7 +52,7 @@
         const a = t - 12 * k; if (a < 0 || a >= 40) continue;
         const r = robotAt(a, TF.mod(k, 2) === 0); if (!r) continue;
         if (r.build !== undefined) drawBuild(ctx, r, a, lod);
-        else { if (a >= 26.5 && a < 29) { ctx.save(); ctx.beginPath(); ctx.rect(3560, yF8 - 120, 220, yF - yF8 + 120); ctx.clip(); A.draw(ctx, r, r.y); ctx.restore(); } else A.draw(ctx, r, r.y); }
+        else { if (a >= 26.5 && a < 29) { ctx.save(); ctx.beginPath(); ctx.rect(3560, yF8 - 120, 220, yF - yF8 + 120); ctx.clip(); A.draw(ctx, r, r.y); ctx.restore(); } else { const f = A.draw(ctx, r, r.y); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); } } }
       }
     } });
 
@@ -74,11 +79,14 @@
       D.rect(ctx, 1600, hY(1.0), 50, 0.9 * M, '#d5dade', '#7b848c', 1);                           // test rig
       const a = t * Math.PI * 4; D.circle(ctx, 1625, hY(1.2), 7, '#9aa1a8', '#4a5056', 1);
       if (lod !== 'far') D.line(ctx, [[1625, hY(1.2)], [1625 + Math.cos(a) * 6, hY(1.2) + Math.sin(a) * 6]], '#e5e7eb', 1);
+      D.rect(ctx, 1719, hY(0.9) + 4, 4, yF - (hY(0.9) + 4), '#8a939b');
+      D.rect(ctx, 1747, hY(0.9) + 4, 4, yF - (hY(0.9) + 4), '#8a939b');
       D.rect(ctx, 1715, hY(0.9), 40, 4, '#9aa3ab'); if (lod !== 'far' && (s < 1.0 || s >= 18)) for (let i = 0; i < 4; i++) D.rect(ctx, 1720 + i * 9, hY(0.9) - 8, 6, 8, '#6b737b', '#2b2f34', 0.5);
+      if (lod !== 'far' && (s >= 19.9 || s < 0.6)) IT.tote(ctx, 1705, hY(0.9));
       // SL71 chute inlet in the west wall (the chute crosses the core to the SS spiral)
       TF.tube.draw(ctx, TF.track.path(TF.SL71.pts.slice(0, 2)), lod);
       D.rect(ctx, 1360, hY(0.5), 22, 0.5 * M, '#e9d9a8', '#c9b071', 1);
-      K.cabinet(ctx, 1790, hY(1.0), 18, 46, t, 71, lod);
+      K.cabinet(ctx, 1790, yF - 46, 18, 46, t, 71, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; const st = feeder(t), f = A.draw(ctx, st, yF), s = s24(t);
@@ -94,16 +102,20 @@
     back(ctx, t, theme, lod) {
       const s = s12(t);
       X.upper(ctx, yF, ceil, t, lod, { duct: [1850, 2150, 4.2], fans: [2100], tray: [1850, 2100, 3.5], lamps: [1950, 2150] });
+      D.rect(ctx, 1958, hY(4.55), 10, hY(4.2) - 20 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);   // collar up to the floor trunk
       D.rect(ctx, 1950, hY(4.2) - 20, 26, 9, '#c9d0d6', '#7b848c', 1);                                // vent box (Shiba peek)
       D.rect(ctx, 1990, hY(2.15), 20, 16, '#dfe4e8', '#7b848c', 1);                                   // sensor receiver
       D.rect(ctx, 2060, hY(0.9), 220, 5, '#9aa3ab', '#6d757d', 0.8);
+      if (lod !== 'far' && s24(t) >= 6.2 && s24(t) < 6.7) IT.tote(ctx, 2205, hY(0.9));
       for (const x of [2070, 2275]) D.rect(ctx, x, hY(0.9) + 5, 4, 0.86 * M, '#8a939b');
       if (lod !== 'far') { D.circle(ctx, 2110, hY(0.9) - 9, 9, '#f3f4f5', '#2c3136', 1); D.circle(ctx, 2112, hY(0.9) - 10, 6, '#0b0d10'); // head on its jig
         for (let i = 0; i < 4; i++) D.rect(ctx, 2150 + i * 5, hY(0.9) - 10 - 3 * Math.min(1, TF.ramp(s, 1 + i * 2, 2 + i * 2)), 3, 10, '#141619'); }   // fingers going in
       const tip1 = [2160 + 10 * Math.sin(t * Math.PI), hY(1.1)], tip2 = [2112, hY(1.0) + 4 * Math.sin(t * Math.PI * 2)];
       K.arm(ctx, [2200, yF], tip1, { l1: 34, l2: 30, toolAng: Math.PI / 2, bend: 1, tool: 6 }); K.arm(ctx, [2080, hY(2.6)], tip2, { l1: 30, l2: 28, hang: true, bend: -1, toolAng: Math.PI / 2, tool: 6 });
+      D.rect(ctx, 2066, ceil, 2, (hY(2.6) - 4) - ceil, '#9aa3ab');
+      D.rect(ctx, 2114, ceil, 2, (hY(2.6) - 4) - ceil, '#9aa3ab');
       D.rect(ctx, 2060, hY(2.6) - 4, 60, 4, '#9aa3ab');
-      K.cabinet(ctx, 1860, hY(1.0), 18, 46, t, 73, lod);
+      K.cabinet(ctx, 1860, yF - 46, 18, 46, t, 73, lod);
     },
     draw() {}, front() {} });
 
@@ -120,9 +132,11 @@
       X.upper(ctx, yF, ceil, t, lod, { duct: [2330, 2520, 4.2], fans: [2380], pipes: [2600, 2780, 3.7], valves: [2700], lamps: [2450, 2700] });
       D.rect(ctx, 2410, hY(2.05), 20, 16, '#dfe4e8', '#7b848c', 1);                                     // computer receiver
       X.rack(ctx, 2340, yF, 0.9, 1.3, 2, 3, (c, x, y) => IT.pack(c, x + 4, y), lod);
-      D.rect(ctx, 2430, hY(1.0), 50, 4, '#9aa3ab'); if (lod !== 'far') for (let i = 0; i < 2; i++) IT.tote(ctx, 2445 + i * 22, hY(1.0));
+      D.rect(ctx, 2434, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
+      D.rect(ctx, 2472, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
+      D.rect(ctx, 2430, hY(1.0), 50, 4, '#9aa3ab'); if (lod !== 'far') { for (let i = 0; i < 2; i++) IT.tote(ctx, 2445 + i * 22, hY(1.0)); if (s >= 10.2 && s < 11.3) IT.tote(ctx, 2420, hY(1.0)); }
       D.rect(ctx, STAND - 30, yF - 6, 60, 6, '#7b848c'); D.rect(ctx, STAND - 34, hY(2.2), 6, 2.2 * M, '#9aa3ab'); D.rect(ctx, STAND - 34, hY(2.2), 26, 5, '#9aa3ab');
-      K.cabinet(ctx, 2770, hY(2.0), 16, 30, t, 75, lod);
+      K.cabinet(ctx, 2750, yF - 46, 16, 46, t, 75, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -156,7 +170,7 @@
       X.belt(ctx, PAD - 45, PAD + 45, yF, 0.12, tread ? -t * 40 : 0, lod);
       if (glow) { ctx.globalAlpha = 0.35; D.rect(ctx, PAD - 40, yF - 10, 80, 4, '#4da3ff'); ctx.globalAlpha = 1; }
       D.rect(ctx, 3110, hY(1.1), 20, 1.1 * M, '#d5dade', '#7b848c', 1); D.screen(ctx, 3105, hY(1.5), 30, 16, (x, y, w, h) => { if (tread) for (let i = 0; i < 5; i++) D.rect(ctx, x + 3 + i * 5, y + h - 3 - 8 * TF.hash(i, Math.floor(t * 4) % 192), 3, 8 * TF.hash(i, Math.floor(t * 4) % 192), '#4ade80'); });
-      K.cabinet(ctx, 2820, hY(1.0), 18, 46, t, 77, lod);
+      K.cabinet(ctx, 2820, yF - 46, 18, 46, t, 77, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; A.draw(ctx, bay(t), yF); } });
@@ -173,15 +187,19 @@
       for (let i = 0; i <= 10; i++) { const k = i / 10; D.rect(ctx, TF.lerp(STAIR[0] - 10, STAIR[1], k), TF.lerp(yF, yF8, k) - 2, 16, 3, '#9aa3ab'); }
       D.line(ctx, [[STAIR[0] - 10, yF], [STAIR[1] + 6, yF8]], '#7b848c', 2);
       // catwalk along the window wall (wave-peek hatch), drone window
+      D.rect(ctx, 3300, ceil, 2, (hY(3.0)) - ceil, '#9aa3ab');
+      D.rect(ctx, 3480, ceil, 2, (hY(3.0)) - ceil, '#9aa3ab');
       D.rect(ctx, 3290, hY(3.0), 200, 5, '#9aa3ac', '#6d757d', 1); D.line(ctx, [[3290, hY(3.0) - 22], [3490, hY(3.0) - 22]], '#9aa3ac', 1.5);
       for (let x = 3292; x <= 3490; x += 25) D.line(ctx, [[x, hY(3.0) - 22], [x, hY(3.0)]], '#b9c0c7', 1);
       D.rect(ctx, 3741, hY(4.4), 18, 1.6 * M, '#dbeefc', '#7b848c', 1.2);
       // tube console (Elon tweaks it on his tour: lamps race and the riser whooshes)
       const tw = TF.elonTour && TF.elonTour.at7E(t);
-      D.rect(ctx, 3575, hY(1.05), 54, 1.05 * M, '#334155', '#1e293b', 1);
+      D.rect(ctx, 3575, hY(1.65), 54, 1.65 * M, '#334155', '#1e293b', 1);
       for (let i = 0; i < 3; i++) D.rect(ctx, 3582 + i * 16, hY(1.55), 12, 10, tw && (Math.floor(t * 6) + i) % 3 === 0 ? '#4ade80' : '#38bdf8');
+      D.circle(ctx, 3622, hY(1.15), 4, '#0f172a', '#94a3b8', 1);                                                                    // lever pivot
+      D.line(ctx, [[3622, hY(1.15)], [3622 + (tw ? 8 : -8), hY(1.15) - (tw ? 8 : 10)]], '#e2e8f0', 2);                              // lever flips on tour
       if (tw && lod !== 'far') { ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * Math.PI * 8); D.rect(ctx, 3578, hY(1.5), 48, 6, '#67e8f9'); ctx.globalAlpha = 1; }
-      K.cabinet(ctx, 3300, hY(1.0), 18, 46, t, 79, lod);
+      K.cabinet(ctx, 3300, yF - 46, 18, 46, t, 79, lod);
     },
     draw() {}, front() {} });
 

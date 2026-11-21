@@ -177,9 +177,10 @@
     { const u = TF.mod(t, 12), hot = TF.pulse(u, 3.8, 8.4, 1.0);
       if (hot > 0) for (const x of [1600, 1700, 1790]) K.wisp(ctx, x, hY(1.72), t + x * 0.01, 2, lod, 0.22 * hot);
       K.wisp(ctx, FUR.x1 + 8, hY(1.5), t, 3, lod, 0.14, '#ffd9b0', 18);
-      K.cabinet(ctx, 1508, hY(3.05), 13, 20, t, 3, lod); }
+      K.cabinet(ctx, 1508, hY(DECK.h) - 20, 13, 20, t, 3, lod); }
     // furnace fume duct: from the deck up the west wall to the ceiling; fan runs faster while the furnace melts
-    D.rect(ctx, 1366, L.ceilY(6), 14, hY(DECK.h) - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
+    D.rect(ctx, 1366, hY(4.88), 14, hY(DECK.h) - hY(4.88), '#dfe4e8', '#9aa3ab', 1);
+    D.rect(ctx, 1363, hY(4.88) - 8, 20, 3, '#9aa3ab'); D.rect(ctx, 1363, hY(4.88) + 5, 20, 3, '#9aa3ab');   // T-collar into the floor-6 trunk
     D.rect(ctx, 1362, hY(3.72), 26, 10, '#c9d0d6', '#7b848c', 1);                           // junction box (peek hatch on top)
     if (mid) D.fan(ctx, 1373, hY(4.55), 9, K.spin(t, 24, 0.5, 2, [[10, 13]]));
     if (theme.decor.garland) theme.decor.garland(ctx, room.inner.x, room.inner.x + room.inner.w, room.inner.y, t, lod);

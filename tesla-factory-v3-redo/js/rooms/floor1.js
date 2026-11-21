@@ -90,7 +90,7 @@
       X.charger(ctx, 1790, yF, on ? 0.3 + 0.6 * TF.mod(s, 1.5) / 1.5 : 0.15, null, lod, t);
       X.charger(ctx, 1810, yF, s >= 21 && s < 21.6 ? 0.8 : 0.15, null, lod, t);
       D.screen(ctx, 1600, hY(2.6), 34, 18, (x, y, w, h) => { D.circle(ctx, x + w / 2, y + h / 2, 4, on ? '#4ade80' : '#334155'); });
-      K.cabinet(ctx, 1365, hY(2.2), 18, 30, t, 61, lod);
+      K.cabinet(ctx, 1365, yF - 46, 18, 46, t, 61, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -176,7 +176,7 @@
       D.rect(ctx, CR - 30, yF - 4, 60, 4, '#7b848c');
       if (kit < TF.mod(6.0 - w[0] - 0.6, 24)) D.rect(ctx, CR - 26, yF - 8, 52, 4, '#d6b07a', '#7d5a2c', 0.8);
       K.arm(ctx, [CR + 45, yF], s >= 5.5 && s < 7.2 ? [CR + 18, hY(2.0) + 30 * TF.ramp(s, 6.4, 7.0)] : [CR + 40, hY(1.4)], { l1: 40, l2: 36, toolAng: Math.PI, bend: 1, tool: 6 });
-      K.cabinet(ctx, 2280, hY(1.0), 18, 46, t, 63, lod);
+      K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 63, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -198,6 +198,7 @@
     back(ctx, t, theme, lod) {
       const s = s24(t), w = R.glass.window(0, 0), u = TF.mod(s - w[0], 24);
       X.upper(ctx, yF, ceil, t, lod, { duct: [2330, 2520, 4.3], fans: [2380], pipes: [2330, 2780, 3.7], valves: [2440, 2720], lamps: [2450, 2700] });
+      D.rect(ctx, 2708, hY(4.55), 10, hY(4.3) - 20 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 2700, hY(4.3) - 20, 26, 9, '#c9d0d6', '#7b848c', 1);                                // vent box (Shiba peek)
       // bending oven tunnel with glowing elements, glass moving through on rollers, cooling rack
       D.rect(ctx, 2360, hY(1.7), 190, 1.0 * M, '#efe6df', '#8b6b5c', 1.2);
@@ -208,7 +209,7 @@
       // loader arm: blanks out of the basket into the oven, panes from the rack into the basket (during the stop)
       const k = TF.pulse(u, 0.2, 3.2, 0.6), tip = [TF.lerp(2620, 2600, k), TF.lerp(hY(1.2), hY(1.9), k)];
       K.arm(ctx, [2630, yF], tip, { l1: 40, l2: 36, toolAng: -Math.PI / 2, bend: -1, tool: 6 });
-      K.cabinet(ctx, 2330, hY(1.0), 18, 46, t, 65, lod);
+      K.cabinet(ctx, 2330, yF - 46, 18, 46, t, 65, lod);
     },
     draw() {}, front() {} });
 
@@ -219,15 +220,15 @@
     const up = A.reach([0.4, 1.75], [0.25, 1.7], { gripN: 0.9, gripF: 0.9, head: -0.3 }), stir = (tl) => A.reach([0.4 + 0.06 * Math.cos(tl * 6), 1.0 + 0.04 * Math.sin(tl * 6)], [0.3, 0.95], { gripN: 1, head: 0.25 });
     const plate = A.reach([0.4, 0.98], [0.25, 0.98], { gripN: 0.9, gripF: 0.9 });
     const segs = [A.keyed(0.6, 2975, -1, [[0, A.stand()], [1, up]]), A.keyed(0.6, 2975, -1, [[0, up], [1, A.stand()]]),          // groceries out, food crate in
-      A.walk(0.5, 2975, 2925, { step: 0.4 }), A.hold(4.0, 2925, -1, (tl) => stir(tl)),                                          // cook at the stove
-      A.turn(0.3, 2925, -1), A.walk(1.5, 2925, 3075, { step: 0.55 }), A.hold(1.7, 3075, 1, () => plate),                          // plate up
+      A.walk(0.5, 2975, 2925, { step: 0.4 }), A.hold(3.4, 2925, -1, (tl) => stir(tl)),                                          // cook at the stove
+      A.turn(0.3, 2925, -1), A.walk(1.5, 2925, 3075, { step: 0.55 }), A.hold(1.3, 3075, 1, () => plate),                          // plate up
       A.walk(1.5, 3075, 3235, { step: 0.55, carry: [0.35, 1.0], carryW: 0.3 }), A.keyed(0.8, 3235, 1, [[0, plate], [1, A.reach([0.6, 1.05], null, { gripN: 0 })]]),   // through the serving door
       A.turn(0.3, 3235, 1), A.walk(1.6, 3235, 3080, { step: 0.55 }), A.turn(0.3, 3080, -1),
-      A.hold(2.2, 3080, 1, (tl) => A.reach([0.4, 0.95 + 0.05 * Math.sin(tl * 5)], [0.25, 0.95], { gripN: 0.8 })),             // pack the ship food crate
-      A.walk(1.2, 3080, 3155, { step: 0.5 }), A.hold(2.0, 3155, 1, (tl) => stir(tl)),                                          // wash the pans
-      A.turn(0.3, 3155, 1), A.walk(2.2, 3155, 2855, { step: 0.6, carry: [0.35, 1.0], carryW: 0.3 }), A.hold(1.6, 2855, -1, (tl) => stir(tl)),   // mixer
-      A.turn(0.3, 2855, -1)];
-    segs.push(A.walk(24 - A.total(segs), 2855, 2975, { step: 0.5 }));
+      A.hold(2.0, 3080, 1, (tl) => A.reach([0.4, 0.95 + 0.05 * Math.sin(tl * 5)], [0.25, 0.95], { gripN: 0.8 })),             // pack the ship food crate
+      A.walk(1.1, 3080, 3155, { step: 0.5 }), A.hold(1.4, 3155, 1, (tl) => stir(tl)),                                          // wash the pans
+      A.turn(0.3, 3155, 1), A.walk(2.0, 3155, 2855, { step: 0.6 }), A.hold(1.5, 2855, -1, (tl) => stir(tl)),   // mixer
+      A.turn(0.3, 2855, -1), A.walk(1.6, 2855, 3105, { step: 0.6 }), A.turn(0.2, 3105, 1)];
+    segs.push(A.walk(24 - A.total(segs), 3105, 2975, { step: 0.55, carry: [0.35, 1.0], carryW: 0.3 }));
     return (t) => A.run(segs, TF.mod(t - w0 + 0.3, 24)); })();
   TF.room({ id: '1D', period: 24, box: L.roomById('1D').box,
     ports: { D1CD: 'pass', D1DE: 'out', F1R: 'both' },
@@ -242,17 +243,17 @@
       if (u >= 1.7 && u < 5.7) K.wisp(ctx, 2919, hY(1.05), t, 2, lod, 0.3, '#f3f4f6', 30);
       D.rect(ctx, 3060, hY(0.9), 90, 4, '#9aa3ab'); D.rect(ctx, 3065, hY(0.9) + 4, 4, 0.86 * M, '#8a939b'); D.rect(ctx, 3140, hY(0.9) + 4, 4, 0.86 * M, '#8a939b');
       if (u >= 7.5 && u < 9.2 && lod !== 'far') { D.rect(ctx, 3085, hY(0.9) - 3, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, 3100, hY(0.9) - 3); }
-      if (u >= 13.7 && u < 20.4 && lod !== 'far') IT.foodcrate(ctx, 3115, hY(0.9));
+      if (u >= 13.7 && u < 22.8 && lod !== 'far') IT.foodcrate(ctx, 3115, hY(0.9));
       D.rect(ctx, 3170, hY(0.9), 40, 0.9 * M, '#cbd5e1', '#6b7280', 1); D.rect(ctx, 2820, hY(1.1), 30, 1.1 * M, '#dfe4e8', '#7b848c', 1);
       if (lod !== 'far') D.line(ctx, [[2835, hY(1.1)], [2835 + 8 * Math.cos(t * Math.PI * 2), hY(1.1) - 6 + 4 * Math.sin(t * Math.PI * 2)]], '#4a5056', 1.5);
-      K.cabinet(ctx, 3220, hY(1.8), 18, 30, t, 67, lod);
+      K.cabinet(ctx, 3220, yF - 46, 18, 46, t, 67, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
       const u = TF.mod(t - w0 + 0.3, 24), st = cook(t), fig = A.draw(ctx, st, yF), w = fig.w(fig.sk.wristN);
       if (u >= 9.2 && u < 11.5) { D.rect(ctx, w[0] - 15, w[1] - 2, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, w[0], w[1] - 2); }
-      if (u >= 20.4 || u < 0.9) IT.foodcrate(ctx, w[0], w[1] + 6);
+      if (u >= 22.8 || u < 0.9) IT.foodcrate(ctx, w[0], w[1] + 6);
     } });
 
   // ================= 1E cafeteria: ONE server =================
@@ -290,13 +291,14 @@
       P.circle(ctx, [0.37, 0.33], 0.018, '#222', null);
       P.at(ctx, [-0.3, 0.25], 0.6 + wag, () => P.ellipse(ctx, [0.07, 0], 0.09, 0.04, 0, '#d98a3d', null));
       P.end(ctx);
-      K.cabinet(ctx, 3300, hY(1.8), 18, 30, t, 69, lod);
+      K.cabinet(ctx, 3300, yF - 46, 18, 46, t, 69, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
       const u = TF.mod(t - sv0, 24), st = server(t), fig = A.draw(ctx, st, yF), w = fig.w(fig.sk.wristN);
       if (u < 1.4) { D.rect(ctx, w[0] - 15, w[1] - 2, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, w[0], w[1] - 2); }
+      if (u >= 21.4 && u < 22.8) IT.foodcrate(ctx, w[0], w[1] + 4);
       TF.gag42.jumper(ctx, theme, t, lod, 'room');   // 42 gag: the lawn jumper's lap of the table
     } });
 

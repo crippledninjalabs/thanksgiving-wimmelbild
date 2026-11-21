@@ -33,7 +33,7 @@
       if (lod !== 'far') for (const [x, r] of [[3680, unR], [3330, reR]]) D.line(ctx, [[x, hY(1.3)], [x + Math.cos(ph / 10) * r * M, hY(1.3) + Math.sin(ph / 10) * r * M]], '#e5e7eb', 0.8);
       // doffed roll rolls on its cart through D3DE to the 3D winder (22 .. 24)
       if (s >= 22) { const x = TF.lerp(3330, 3220, TF.ramp(s, 22, 24)); D.circle(ctx, x, hY(1.3), 0.5 * M, '#6b4a2a', '#3d2a1a', 1); D.rect(ctx, x - 20, hY(0.75), 40, 0.75 * M, '#9aa3ab', '#6d757d', 0.8); }
-      K.cabinet(ctx, 3720, hY(1.0), 18, 48, t, 41, lod);
+      K.cabinet(ctx, 3720, yF - 48, 18, 48, t, 41, lod);
       D.rect(ctx, 3455, hY(3.5) - 9, 24, 6, '#9aa3ab');
     },
     draw() {}, front() {} });
@@ -56,7 +56,7 @@
       X.press(ctx, 2960, yF, 0.9, 1.9, TF.pulse(TF.mod(t, 1), 0.2, 0.8, 0.2), lod);
       X.belt(ctx, 2800, 3040, yF, 1.0, -t * 24, lod);
       cellsOnBelt(ctx, 2800, 3000, t, lod);
-      K.cabinet(ctx, 3230, hY(1.0), 18, 46, t, 43, lod);
+      K.cabinet(ctx, 3230, yF - 46, 18, 46, t, 43, lod);
     },
     draw() {}, front() {} });
 
@@ -153,6 +153,7 @@
     back(ctx, t, theme, lod) {
       const s = s24(t);
       X.upper(ctx, yF, ceil, t, lod, { duct: [2330, 2560, 3.9], fans: [2380], pipes: [2640, 2780, 3.6], valves: [2700], lamps: [2420, 2700] });
+      D.rect(ctx, 2478, hY(4.55), 10, hY(3.92) - 7 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 2470, hY(3.92) - 7, 26, 9, '#c9d0d6', '#7b848c', 1);                         // vent box (Shiba peek)
       X.belt(ctx, 2700, 2790, yF, 1.0, -t * 24, lod); cellsOnBelt(ctx, 2700, 2790, t, lod);
       // charge racks: 4 levels x 8 slots, the charge lights fill level by level over the 24 s loop
@@ -160,7 +161,7 @@
         if (lod !== 'far') for (let i = 0; i < 8; i++) cell(ctx, 2355 + i * 29, y, TF.mod(s / 24 + lv * 0.25 + i / 32, 1) > 0.5); }
       for (const x of [2340, 2577]) D.rect(ctx, x, hY(2.4), 3, 2.4 * M, '#8a939b');
       K.ladder(ctx, LAD, yF, 2.4);
-      K.cabinet(ctx, 2740, hY(2.1), 18, 30, t, 45, lod);
+      K.cabinet(ctx, 2740, yF - 46, 18, 46, t, 45, lod);
       feastDraw(ctx, t, theme, lod);
     },
     draw() {},
@@ -187,21 +188,25 @@
       // drum filler + tray filling + lid press, out-table to the PB stop
       D.circle(ctx, 2080, hY(1.4), 0.45 * M, '#d5dade', '#7b848c', 1.2);
       if (lod !== 'far') for (let k = 0; k < 8; k++) { const a = t * Math.PI / 2 + k * Math.PI / 4; cell(ctx, 2080 + Math.cos(a) * 16, hY(1.4) + Math.sin(a) * 16 + 3); }
+      D.rect(ctx, 1908, hY(0.9) + 5, 4, yF - (hY(0.9) + 5), '#6d757d');
+      D.rect(ctx, 2028, hY(0.9) + 5, 4, yF - (hY(0.9) + 5), '#6d757d');
       D.rect(ctx, 1900, hY(0.9), 140, 5, '#9aa3ab', '#6d757d', 0.8);
       for (const k in TF.PB.trips) { const p = TF.PB.trips[k], u = TF.mod(s - p.tb + 3.2, 24);
         if (u < 3.2) { const x = u < 2.7 ? TF.lerp(2010, 1905, TF.ramp(u, 0.2, 2.6)) : TF.lerp(1905, TF.PB.XU + (p.down ? 30 : 0), TF.ramp(u, 2.7, 3.2));
           D.rect(ctx, x - 26, hY(0.9) - (p.big ? 9 : 6), 52, p.big ? 9 : 6, '#2a2e33', '#111', 0.6); } }
       X.press(ctx, 2010, yF, 0.8, 1.7, TF.pulse(TF.mod(t, 4.8), 0.4, 1.6, 0.3), lod);
-      K.cabinet(ctx, 2270, hY(1.0), 18, 46, t, 47, lod);
+      K.cabinet(ctx, 2270, yF - 46, 18, 46, t, 47, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
-      // loader arm lifts two Optimus packs into the F3R basket while it waits at its base (2150)
-      const home = TF.mod(R.optPacks.dep - 2.0, 24), u = TF.mod(s24(t) - home, 24), k = TF.pulse(u, 0, 2.0, 0.5);
+      // loader arm lifts Optimus packs from staging stand into the F3R basket while it loads at its base (2150, s24 = 8.6)
+      const home = TF.mod(R.optPacks.dep - 2.0, 24), u = TF.mod(s24(t) - home, 24), k = TF.pulse(u, 0, 2.6, 0.8);
       const tip = [TF.lerp(2210, 2150, k), TF.lerp(hY(1.0), hY(3.3), k)];
+      D.rect(ctx, 2198, hY(1.0) + 4, 24, 4, '#9aa3ab'); D.rect(ctx, 2208, hY(1.0) + 8, 4, 1.0 * M - 8, '#8a939b');
+      if (u >= 2.6) IT.pack(ctx, 2210, hY(1.0) + 4);
       K.arm(ctx, [2215, yF], tip, { l1: 45, l2: 42, toolAng: Math.PI / 2, bend: 1, tool: 6 });
-      if (u < 1.2) IT.pack(ctx, tip[0], tip[1] + 8);
+      if (u < 1.6) IT.pack(ctx, tip[0], tip[1] + 8);
     } });
 
   // ================= 3A wheel shop: ONE ledge Optimus loads the totes (cut job #12) =================
@@ -227,18 +232,24 @@
       X.upper(ctx, yF, ceil, t, lod, { duct: [1620, 1810, 4.0], fans: [1760], tray: [1620, 1810, 3.4], lamps: [1700] });
       X.rack(ctx, 1328, yF, 1.72, 2.4, 3, 4, (c, x, y) => IT.tire(c, 1328 + 19.5 + (x - 1334) * 47 / 74, y), lod);   // car-size tyres, 2 per shelf
       X.press(ctx, 1440, yF, 0.7, 2.0, TF.pulse(TF.mod(t, 6), 0.5, 2.0, 0.4), lod);
-      X.belt(ctx, 1460, 1640, yF, 0.7, -t * 20, lod);
-      if (lod !== 'far') for (let x = 1622 - TF.mod(t * 30, 60); x > 1483; x -= 60) IT.tireAt(ctx, x, hY(0.7) - IT.R_TIRE, IT.R_TIRE);
-      // balancer (spinning wheel) + tote lift to the ledge
+      X.belt(ctx, 1460, 1640, yF, 0.7, t * 20, lod);
+      if (lod !== 'far') { ctx.save(); ctx.beginPath(); ctx.rect(1452, hY(1.8), 203, 1.8 * M); ctx.clip();
+        for (let x = 1435 + TF.mod(t * 30, 60); x < 1675; x += 60) IT.tireAt(ctx, x, hY(0.7) - IT.R_TIRE, IT.R_TIRE);
+        ctx.restore(); }
+      // balancer (spinning wheel) + tote lift synced to opt3a (4 picks per 24s, u in 0..4.8)
       D.rect(ctx, 1655, hY(1.0), 30, 1.0 * M, '#d5dade', '#7b848c', 1);
       const a = t * Math.PI * 6; IT.tireAt(ctx, 1670, hY(1.25), 0.37 * M, { ang: a });
-      const lift = TF.mod(t, 6) / 6, ly = TF.lerp(hY(0.1), hY(LEDGE[2] + 0.05), TF.smooth(Math.min(1, lift * 1.3)));
-      D.line(ctx, [[1612, yF], [1612, hY(LEDGE[2] + 0.4)]], '#8a939b', 3); D.rect(ctx, 1600, ly - 4, 24, 4, '#7b848c'); if (lift < 0.8) IT.wtote(ctx, 1612, ly - 4);
+      const lu = TF.mod(s, 4.8), active = s < 19.2, lFrac = active ? (lu < 0.6 ? TF.ramp(lu, 0, 0.6) : lu < 1.2 ? 1 : 1 - TF.ramp(lu, 1.2, 4.2)) : 0;
+      const ly = TF.lerp(yF + 10, hY(LEDGE[2] + 0.05), lFrac);
+      D.line(ctx, [[1612, yF], [1612, hY(LEDGE[2] + 0.4)]], '#8a939b', 3);
+      ctx.save(); ctx.beginPath(); ctx.rect(1570, ceil, 90, yF - ceil); ctx.clip();
+      D.rect(ctx, 1600, ly - 4, 24, 4, '#7b848c'); if (active && lu < 0.6) IT.wtote(ctx, 1612, ly - 4);
+      ctx.restore();
       // ledge
       D.rect(ctx, LEDGE[0], hY(LEDGE[2]), LEDGE[1] - LEDGE[0], 6, '#f2c230', '#9c7a12', 1);
       for (const x of [LEDGE[0] + 4, LEDGE[1] - 8]) D.rect(ctx, x, hY(LEDGE[2]) + 6, 4, LEDGE[2] * M - 6, '#9aa3ab');
       K.ladder(ctx, LEDGE[0] - 8, yF, LEDGE[2]);
-      K.cabinet(ctx, 1780, hY(1.0), 18, 46, t, 49, lod);
+      K.cabinet(ctx, 1780, yF - 46, 18, 46, t, 49, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {

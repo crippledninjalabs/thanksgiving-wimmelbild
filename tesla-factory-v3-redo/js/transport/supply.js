@@ -159,7 +159,7 @@
       D.rect(ctx, INLET[0] - 9, INLET[1] - 20 - 6 * TF.pulse(u, 2.9, 3.6, 0.15), 18, 3, '#7b848c');
       if (lod === 'far') return;
       // drone: in 0-2.4 from the upper right, hover over the inlet 2.4-3.6 (parcel drops 3.0-3.4), out 3.6-6
-      const k = TF.pulse(u, 0, 6, 2.4), x = INLET[0] + (1 - k) * 260, y = INLET[1] - 40 - (1 - k) * 220 + Math.sin(u * 3) * 2;
+      const k = TF.pulse(u, 0, 6, 2.4), x = INLET[0] + (1 - k) * 260, y = INLET[1] - 40 - (1 - k) * 620 + Math.sin(u * 3) * 2;
       if (u < 6) { D.rect(ctx, x - 12, y - 3, 24, 7, '#3a3f45', '#1d2125', 0.8);
         for (const s of [-1, 1]) { const rr = 8 * Math.abs(Math.cos(t * 37.69911184307752 + s)); D.line(ctx, [[x + s * 13 - rr, y - 7], [x + s * 13 + rr, y - 7]], '#5d656d', 1.4); }
         if (u < 3.0) IT.chip(ctx, x, y + 12); else if (u < 3.4) IT.chip(ctx, x, TF.lerp(y + 12, INLET[1] - 6, (u - 3.0) / 0.4)); }
@@ -177,7 +177,7 @@
         D.rect(ctx, ox - 7, oy - 9, 14, 18, '#dfe4e8', '#7b848c', 1);   // wall tube opening
         D.rect(ctx, ox + cfg.side * 7 - 2, oy - 9 - 7 * TF.pulse(u, 2.6, 3.6, 0.15), 4, 9, '#7b848c');
         if (lod === 'far' || u > 6) return;
-        const k = TF.pulse(u, 0, 6, 2.4), x = ox + cfg.side * (18 + (1 - k) * 280), y = oy - 14 - (1 - k) * 160 + Math.sin(u * 3) * 2;
+        const k = TF.pulse(u, 0, 6, 2.4), x = ox + cfg.side * (18 + (1 - k) * 1620), y = oy - 14 - (1 - k) * 160 + Math.sin(u * 3) * 2;
         D.rect(ctx, x - 12, y - 3, 24, 7, '#3a3f45', '#1d2125', 0.8);
         for (const s of [-1, 1]) { const rr = 8 * Math.abs(Math.cos(t * 37.69911184307752 + s)); D.line(ctx, [[x + s * 13 - rr, y - 7], [x + s * 13 + rr, y - 7]], '#5d656d', 1.4); }
         const item = IT[cfg.item];

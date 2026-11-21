@@ -50,6 +50,8 @@
       rollers(ctx, 3280, 3610, t, lod);
       X.upper(ctx, yF, ceil, t, lod, { duct: [3290, 3560, 4.1], fans: [3330], tray: [3290, 3520, 3.4], lamps: [3360, 3480] });
       // catwalk for the press maintenance (wave peek hatch)
+      D.rect(ctx, 3570, ceil, 2, (hY(3.2)) - ceil, '#9aa3ab');
+      D.rect(ctx, 3730, ceil, 2, (hY(3.2)) - ceil, '#9aa3ab');
       D.rect(ctx, 3560, hY(3.2), 180, 5, '#9aa3ac', '#6d757d', 1); D.line(ctx, [[3560, hY(3.2) - 22], [3740, hY(3.2) - 22]], '#9aa3ac', 1.5);
       for (let x = 3562; x <= 3740; x += 24) D.line(ctx, [[x, hY(3.2) - 22], [x, hY(3.2)]], '#b9c0c7', 1);
       // holding furnace (melt rises when the dolly tips the ingot in) + coolant pipe
@@ -58,7 +60,7 @@
       D.rect(ctx, 3708, hY(1.4), 22, 1.1 * M, '#2b1b16'); D.rect(ctx, 3708, hY(1.4) + 1.1 * M * (1 - lv), 22, 1.1 * M * lv, '#ff7a2a');
       K.pipe(ctx, [[3745, hY(0.2)], [3640, hY(0.2)]], '#5b8fc9', 4, t * 30, lod);
       X.press(ctx, PRESS - 30, yF, 1.3, 2.6, ram(s), lod);
-      K.cabinet(ctx, 3290, hY(1.0), 20, 48, t, 31, lod);
+      K.cabinet(ctx, 3290, yF - 48, 20, 48, t, 31, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -92,8 +94,10 @@
       D.rect(ctx, FIX - 2, hY(1.6), 4, 1.6 * M, '#8a939b'); D.rect(ctx, FIX - 14, hY(1.6), 28, 3, '#8a939b');
       const onFix = s < 0.4 || s >= 12.0;
       if (onFix) { const g = s >= 12.0 && s < 17.2 ? 0 : s >= 17.2 ? doorPaint(s) : 1; doorShape(ctx, FIX, hY(0.95), g); }
+      D.rect(ctx, 2814, hY(0.55) + 4, 3, yF - (hY(0.55) + 4), '#6d757d');
+      D.rect(ctx, 2832, hY(0.55) + 4, 3, yF - (hY(0.55) + 4), '#6d757d');
       D.rect(ctx, 2810, hY(0.55), 30, 4, '#7b848c'); if (lod !== 'far') for (let i = 0; i < (s >= 18.2 || s < 10 ? 2 : 1); i++) D.rect(ctx, 2812, hY(0.55) - 4 - i * 4, 26, 3, '#c9d0d6', '#7b848c', 0.5);
-      K.cabinet(ctx, 3200, hY(1.0), 20, 48, t, 33, lod);
+      K.cabinet(ctx, 3200, yF - 48, 20, 48, t, 33, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -138,7 +142,7 @@
       X.upper(ctx, yF, ceil, t, lod, { pipes: [2320, 2470, 3.5], valves: [2400], tray: [2600, 2780, 3.3], duct: [2600, 2780, 4.2], fans: [2700], lamps: [2450, 2700] });
       X.rack(ctx, 2420, yF, 0.8, 1.2, 2, 2, (c, x, y) => IT.seat(c, x, y), lod);
       D.rect(ctx, 2330, hY(1.85), 20, 16, '#dfe4e8', '#7b848c', 1); D.rect(ctx, 2370, hY(2.35), 20, 16, '#dfe4e8', '#7b848c', 1);
-      K.cabinet(ctx, 2740, hY(1.0), 20, 48, t, 35, lod);
+      K.cabinet(ctx, 2740, yF - 48, 20, 48, t, 35, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -162,12 +166,13 @@
       const s = sOf(t);
       rollers(ctx, 1840, 2310, t, lod);
       X.upper(ctx, yF, ceil, t, lod, { duct: [1960, 2290, 3.9], fans: [2230], tray: [1960, 2140, 3.3], lamps: [2000, 2200] });
+      D.rect(ctx, 2158, hY(4.55), 10, hY(3.95) - 7 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 2150, hY(3.95) - 7, 26, 9, '#c9d0d6', '#7b848c', 1);                                  // vent box (Shiba peek)
       const u = TF.mod(t - pb4.te, 24), on = u < 3.4, k = TF.ramp(u, 1.6, 3.2);
       X.liftTable(ctx, ST.B, yF, 1.6, 0.08 + 0.22 * k, lod);
       if (on) D.rect(ctx, TF.lerp(TF.PB.XU + 30, ST.B, TF.ramp(u, 0.1, 1.2)) - 42, yF - (0.13 + 0.22 * k) * M, 84, 5, '#2a2e33', '#111', 0.6);
       D.rect(ctx, 2262 - 0.4 * M - 2, hY(0.6), 0.4 * M + 14, 0.6 * M, '#2f6fb0', '#1d4570', 1); if (lod !== 'far') IT.wheels(ctx, 2262, hY(0.6), 0.4 * M);
-      K.cabinet(ctx, 2280, hY(1.6), 18, 30, t, 37, lod);
+      K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 37, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
@@ -198,7 +203,7 @@
       const scan = (s >= 1.5 && s < 3.5) || (s >= 8.5 && s < 10.5);
       if (scan && lod !== 'far') { ctx.globalAlpha = 0.25; D.rect(ctx, 1622, hY(2.05), 36, 2.05 * M, '#4ade80'); ctx.globalAlpha = 1; }
       D.screen(ctx, 1720, hY(2.4), 30, 18, (x, y, w, h) => { D.circle(ctx, x + w / 2, y + h / 2, 4, s >= 11 && s < 14.2 ? '#4ade80' : '#334155'); });
-      K.cabinet(ctx, 1770, hY(1.0), 20, 48, t, 39, lod);
+      K.cabinet(ctx, 1770, yF - 48, 20, 48, t, 39, lod);
     },
     draw() {}, front() {} });
 

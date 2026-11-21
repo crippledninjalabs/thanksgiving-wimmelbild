@@ -70,7 +70,8 @@
       D.rect(ctx, OV[0] + 54, hY(4.72), 3505 - OV[0] - 54, 12, '#dfe4e8', '#9aa3ab', 1);
       if (lod !== 'far') D.fan(ctx, OV[0] + 60, hY(3.7), 10, ahuSpin);
       D.rect(ctx, 3505, hY(4.95), 62, 0.7 * M, '#d5dade', '#7b848c', 1.2);
-      D.rect(ctx, 3527, L.ceilY(6), 16, hY(4.95) - L.ceilY(6), '#dfe4e8', '#9aa3ab', 1);
+      D.rect(ctx, 3527, hY(4.88), 16, hY(4.95) - hY(4.88), '#dfe4e8', '#9aa3ab', 1);
+      D.rect(ctx, 3524, hY(4.88) - 8, 22, 3, '#9aa3ab'); D.rect(ctx, 3524, hY(4.88) + 5, 22, 3, '#9aa3ab');   // T-collar into the floor-6 trunk
       if (lod !== 'far') { D.fan(ctx, 3536, hY(4.6), 11, ahuSpin + 0.7); for (let k = 0; k < 4; k++) D.line(ctx, [[3552, hY(4.88) + k * 7], [3563, hY(4.88) + k * 7]], '#9aa3ab', 1); }
       // oven temperature screen: curve over the last 12 s + bar (rises during the bake)
       if (lod !== 'far') D.screen(ctx, 3392, hY(2.95), 40, 17, (x, y, w, hh) => {
