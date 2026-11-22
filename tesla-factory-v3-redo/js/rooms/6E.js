@@ -126,6 +126,6 @@
     },
   });
   TF.peek({ id: 'drone6E', owner: '6E', kind: 'drone', P: 79, offset: 41, dur: 6, x: 3778, y: hY(4.15), face: 1 });
-  TF.peek({ id: 'wave6E', owner: '6E', kind: 'wave', P: 83, offset: 23, dur: 5.5, x: 3600, y: CAT, face: -1 });
+  TF.peek({ id: 'wave6E', owner: '6E', kind: 'wave', P: 64, offset: 23, dur: 5.5, x: 3600, y: CAT, face: -1 });
   TF.debug6E = { qc, liftDrop, heat };
 })(typeof window !== 'undefined' ? window : globalThis);

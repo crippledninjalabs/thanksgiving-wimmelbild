@@ -1,4 +1,4 @@
-// The "42" gag (prime 127, offset 50, 3 cycles) handled by the nearby Optimus. Pure function of t.
+// The "42" gag (P 96, offset 24, 2 cycles; shows at t 24-72 and 120-168 of the 192 s scene (R3-retime)) handled by the nearby Optimus. Pure function of t.
 // ONE helper TF.fortyTwo(t) -> {k, u}: k = -1 neutral, 0 or 1 = beat, u = seconds into that 24 s cycle (cycle starts at a multiple of 24).
 // k=0: the 42 plate wobbles, falls off the ship's west skirt, clangs by the booster QD; the lawn flock startles, one jumper
 //      runs through the 1E cafeteria and back; the tile Optimus carries the bent plate to the tile pile and hammers it straight.
@@ -9,8 +9,8 @@
   const G0 = L.G, yF = L.floorY(1), X0 = L.zoneById('SHIP').box.x, T = L.zoneById('TOWER').box, lawn = L.zoneById('LAWN').box;
   const yCG = S3.deckY(S3.DCK.header) - 6;
   const ramp = TF.ramp, lerp = TF.lerp, TAU = Math.PI * 2;
-  const P = 127, OFF = 50;
-  TF.gagHook({ id: 'fortyTwo', P, offset: OFF, cycles: 3, room: 'SHIP', trigger: 'the 42 plate falls off the ship skirt; the tile Optimus straightens it, the TL car + crew-up Optimus bolt it back; the lawn flock startles and one runs a lap of the 1E table' });
+  const P = 96, OFF = 24;  // OFF multiple of 24 -> c0 = OFF + p*P, show = exactly 48 s; t=0 (=192) is outside
+  TF.gagHook({ id: 'fortyTwo', P, offset: OFF, cycles: 2, room: 'SHIP', trigger: 'the 42 plate falls off the ship skirt; the tile Optimus straightens it, the TL car + crew-up Optimus bolt it back; the lawn flock startles and one runs a lap of the 1E table' });
 
   const SK = [X0 - 9, yCG + 13];              // skirt plate centre (just below the arm walkway, west hull edge)
   const LAND = [4744, G0 - 9];                // resting spot between tower and ship (near the booster QD fixture)

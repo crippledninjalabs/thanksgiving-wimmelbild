@@ -105,14 +105,14 @@
     if (lod !== 'far') for (let k = 0; k < 5; k++) { const a = ang + k * Math.PI * 2 / 5; P.line(ctx, [[c[0] + Math.cos(a) * r * 0.15, c[1] + Math.sin(a) * r * 0.15], [c[0] + Math.cos(a) * r * 0.55, c[1] + Math.sin(a) * r * 0.55]], '#6b737b', r * 0.12); }
     P.circle(ctx, c, r * 0.13, '#4a5056', null);
   };
-  function extras(ctx, st, lod) {
+  function extras(ctx, st, lod, mod) {
     const red = PAL.red;
     if (st.pack) { P.poly(ctx, [[-1.15, 0.25], [1.0, 0.25], [1.0, 0.34], [-1.15, 0.34]], '#2a2e33', '#111', 0.6); if (lod !== 'far') P.line(ctx, [[0.9, 0.3], [1.05, 0.42]], '#f97316', 0.02); }
-    if (st.seats) for (const [x0, x1] of [[0.05, 0.42], [-1.28, -0.88]]) {
+    if (st.seats && !mod) for (const [x0, x1] of [[0.05, 0.42], [-1.28, -0.88]]) {
       P.poly(ctx, [[x0, 0.6], [x1, 0.6], [x1 - 0.06, 1.18], [x0 + 0.02, 1.22]], '#2b2f34', '#111', 0.6);
       P.poly(ctx, [[x0 + 0.06, 1.24], [x0 + 0.24, 1.24], [x0 + 0.22, 1.36], [x0 + 0.08, 1.36]], '#2b2f34', null); }
-    if (st.screen) P.poly(ctx, [[0.82, 0.98], [0.98, 1.0], [0.98, 1.1], [0.82, 1.08]], st.screen > 0.5 ? '#7dd3fc' : '#1f2937', null);
-    if (st.glass) {
+    if (st.screen && !mod) P.poly(ctx, [[0.82, 0.98], [0.98, 1.0], [0.98, 1.1], [0.82, 1.08]], st.screen > 0.5 ? '#7dd3fc' : '#1f2937', null);
+    if (st.glass && !mod) {
       ctx.globalAlpha = 0.78; P.smooth(ctx, GLASS, '#26323d', null); ctx.globalAlpha = 1;
       if (lod !== 'far') P.line(ctx, [[0.95, 1.12], [0.62, 1.34]], '#9fb4c4', 0.012);
       for (const k of ['bPillar', 'roof']) member(ctx, MEMBERS[k][0], MEMBERS[k][1], red);
@@ -130,17 +130,40 @@
   Object.assign(B, { PAL, grad, member, dots, noArchesAt: (ctx, arches, fn) => { ctx.save(); ctx.beginPath(); ctx.rect(-5, -1, 10, 6);
     arches.forEach(([x, y, r]) => { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); }); ctx.clip('evenodd'); fn(); ctx.restore(); } });
 
+  // R3-7: painted/finished Model Y = smooth modern crossover (same length/height/arches; floor-6 bare stages never use this)
+  const SKIN = [[2.3, 0.33], [2.38, 0.46], [2.41, 0.62], [2.33, 0.8], [2.0, 0.89], [1.5, 0.95], [1.05, 1.0], [0.75, 1.2], [0.45, 1.44], [0.1, 1.57], [-0.5, 1.6], [-1.0, 1.55], [-1.5, 1.42], [-2.0, 1.25], [-2.3, 1.15], [-2.38, 1.13], [-2.39, 0.9], [-2.37, 0.5], [-2.27, 0.33]];
+  const GLASSH = [[0.98, 1.03], [0.7, 1.24], [0.42, 1.44], [0.1, 1.53], [-0.5, 1.56], [-1.0, 1.51], [-1.45, 1.39], [-1.85, 1.22], [-1.7, 1.06]];
+  function modernBody(ctx, st, lod) {
+    const pal = PAL.red, fin = [], smoothPts = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length - 1; i++) { const m = [(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2]; ctx.quadraticCurveTo(pts[i][0], pts[i][1], m[0], m[1]); } ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); ctx.closePath(); };
+    noArches(ctx, () => {
+      smoothPts(SKIN); ctx.fillStyle = grad(ctx, pal.panelTop, pal.panelBot); ctx.fill(); ctx.strokeStyle = pal.edge; ctx.lineWidth = 0.014; ctx.stroke();
+      // black lower cladding / sills
+      ctx.beginPath(); ctx.rect(-2.4, 0.3, 4.85, 0.2); ctx.fillStyle = '#1f2327'; ctx.fill();
+    });
+    for (const [x, y] of ARCH) { ctx.beginPath(); ctx.arc(x, y, AR + 0.03, 0.1, Math.PI - 0.1); ctx.strokeStyle = '#1f2327'; ctx.lineWidth = 0.07; ctx.stroke(); }
+    // ducktail lip
+    P.line(ctx, [[-2.3, 1.15], [-2.4, 1.15]], '#8f141c', 0.035);
+    // one dark glasshouse (open cabin look until the glass is fitted)
+    ctx.globalAlpha = st.glass ? 0.92 : 0.55; smoothPts(GLASSH); ctx.fillStyle = st.glass ? '#1c262f' : '#2b3138'; ctx.fill(); ctx.globalAlpha = 1;
+    if (st.seats && lod !== 'far') { ctx.globalAlpha = 0.22; for (const x of [0.05, -1.05]) P.poly(ctx, [[x, 1.1], [x + 0.2, 1.1], [x + 0.18, 1.3], [x + 0.03, 1.3]], '#0b0e11', null); ctx.globalAlpha = 1; }
+    if (lod !== 'far') {
+      for (const x of [-0.12, 0.98, -1.34]) P.line(ctx, [[x, 0.5], [x, x === -0.12 ? 1.54 : 1.02]], pal.edge, 0.012);   // door cuts / B-pillar seam
+      P.line(ctx, [[0.98, 1.03], [-1.7, 1.06]], pal.edge, 0.01);                                                         // beltline
+      P.line(ctx, [[0.35, 0.93], [0.14, 0.93]], pal.edge, 0.016); P.line(ctx, [[-0.62, 0.95], [-0.83, 0.95]], pal.edge, 0.016);   // flush handles
+    }
+  }
   // ---------- public ----------
   B.drawBody = (ctx, x, y, st, lod) => {
     P.begin(ctx, x, y, M, 1);
-    coat(ctx, st, heatPal(st.heat), lod);
-    if (st.paint > 0) {
+    const mod = st.paint >= 1 && !!(st.glass || st.seats || st.wheels || st.wheelF || st.pack || st.lit || st.screen);
+    if (mod) modernBody(ctx, st, lod); else coat(ctx, st, heatPal(st.heat), lod);
+    if (st.paint > 0 && !mod) {
       const xr = 2.45 - st.paint * 4.9, xp = Math.max(-3, xr - (st.paint < 1 ? 0.45 : 0));
       ctx.save(); ctx.beginPath(); ctx.rect(xp, -1, 6, 4); ctx.clip(); coat(ctx, st, PAL.primer, lod); ctx.restore();
       ctx.save(); ctx.beginPath(); ctx.rect(xr, -1, 6, 4); ctx.clip(); coat(ctx, st, PAL.red, lod); ctx.restore();
     }
     // weld beads (stay on the part; painted over in 6D)
-    if (lod !== 'far') st.beads.forEach((p, j) => {
+    if (!mod && lod !== 'far') st.beads.forEach((p, j) => {
       if (p <= 0) return;
       const sp = ln.SEAMS[j], pts = [];
       for (let s = 0; s <= sp.total * p + 1e-9; s += sp.total / 24) pts.push(sp.at(s));
@@ -150,13 +173,15 @@
       if (lod === 'near' && !painted) P.line(ctx, pts, '#b9c1c9', 0.01);
       if (st.welding[j]) P.circle(ctx, pts[pts.length - 1], 0.03, '#ffb347', null);
     });
-    if (lod === 'near') st.bolts.forEach((b, j) => { if (b) P.circle(ctx, [[-0.12, 0.95], [1.12, 0.95], [1.2, 1.0]][j], 0.022, '#30353a', null); });
-    if (st.glass || st.seats || st.wheels || st.wheelF || st.pack || st.lit || st.screen) extras(ctx, st, lod);   // floor 5+: glass, seats, pack, wheels, lights
+    if (!mod && lod === 'near') st.bolts.forEach((b, j) => { if (b) P.circle(ctx, [[-0.12, 0.95], [1.12, 0.95], [1.2, 1.0]][j], 0.022, '#30353a', null); });
+    if (st.glass || st.seats || st.wheels || st.wheelF || st.pack || st.lit || st.screen) extras(ctx, st, lod, mod);   // floor 5+: glass, seats, pack, wheels, lights
     // clear-coat gloss after the bake
     if (st.bake > 0 && lod !== 'far') {
-      ctx.globalAlpha = 0.55 * st.bake;
+      ctx.globalAlpha = 0.4 * st.bake;
+      if (mod) P.line(ctx, [[1.7, 0.9], [-1.9, 1.02]], '#ffffff', 0.016); else {
       P.line(ctx, [[0.4, 1.5], [-0.9, 1.53]], '#ffffff', 0.03); P.line(ctx, [[2.0, 0.78], [1.3, 0.88]], '#ffffff', 0.025);
       P.line(ctx, [[0.9, 0.86], [-0.05, 0.9]], '#ffffff', 0.02); P.line(ctx, [[-0.3, 0.9], [-1.2, 0.93]], '#ffffff', 0.02);
+      }
       ctx.globalAlpha = 1;
     }
     P.end(ctx);

@@ -30,7 +30,7 @@
     blank: (c, x, y) => D.rect(c, x - 12, y - 3, 24, 2.5, '#c9d0d6', '#7b848c', 0.5),
     seat: (c, x, y) => D.poly(c, [[x - 7, y], [x + 5, y], [x + 4, y - 4], [x - 2, y - 4], [x - 5, y - 13], [x - 8, y - 12]], '#3d3935', '#111', 0.5),
     tote: (c, x, y) => { D.rect(c, x - 10, y - 8, 20, 8, '#2f6fb0', '#1d4570', 0.6); },
-    wheels: (c, x, y, r = R_TIRE) => { for (let k = 0; k < 2; k++) S.items.tire(c, x, y - k * 2 * r, r); },   // car-size pair, stacked (x,y = bottom)
+    wheels: (c, x, y, r = R_TIRE) => { S.items.tote(c, x, y); for (let k = 0; k < 2; k++) S.items.tire(c, x, y - 8 - k * 2 * r, r); },   // R3-core-f1238: the pair rides in its tray (same as the wheel stands' tote + tyres)   // car-size pair, stacked (x,y = bottom)
     wtote: (c, x, y) => D.rect(c, x - 38, y - 8, 76, 8, '#2f6fb0', '#1d4570', 0.6),   // wheel tote, same anchor as tote
     powder: (c, x, y) => { D.rect(c, x - 9, y - 9, 8, 9, '#e5e7eb', '#6b737b', 0.6); D.circle(c, x + 5, y - 5, 5, '#c08457', '#7a5230', 0.6); },
     groceries: (c, x, y) => { D.rect(c, x - 8, y - 8, 16, 8, '#86efac', '#3f6f4f', 0.6); D.circle(c, x - 3, y - 9, 2.5, '#f97316'); D.circle(c, x + 3, y - 9, 2.5, '#ef4444'); },
@@ -155,7 +155,8 @@
       for (let f = 1; f <= L.floors; f++) if (f !== 6) TF.basket.cable(ctx, W3u, L.X1 - 12, cableY(f), lod);   // floor cables F(n)R
       for (const r of S.capsules) { TF.tube.draw(ctx, r.sup, lod); if (r.from === 'dock' || r.from.floor) TF.tube.draw(ctx, r.ret, lod); }
       if (lod === 'far') return;
-      for (const r of S.capsules) for (let i = 0; i < r.n; i++) { const c = r.at(t, i); if (c && c.s > 1) TF.tube.capsule(ctx, c.path, c.s, c.v, lod, theme.decor.capsuleDecal, r.col); }
+      for (const r of S.capsules) for (let i = 0; i < r.n; i++) { const c = r.at(t, i); if (c && c.s > 1) TF.tube.capsule(ctx, c.path, c.s, c.v, lod, theme.decor.capsuleDecal, r.col);
+        if (c && r.id === 'roof-chips' && c.path === r.sup && c.u < r.open[0] + 0.3) { const q = c.path.at(c.s); IT.chip(ctx, q[0], q[1] + 5); } }   // R3-core-f9: the chip rides on the capsule until 9A's tray draws it
       for (const r of S.baskets) for (let i = 0; i < r.n; i++) {
         const b = r.at(t, i), items = r.held(b.u, i);
         TF.basket.draw(ctx, b.x, b.y, b.drop, lod, items.length ? (c, px, py) => items.slice(0, 3).forEach((o, j) => {
@@ -185,6 +186,7 @@
       if (u < 6) { D.rect(ctx, x - 12, y - 3, 24, 7, '#3a3f45', '#1d2125', 0.8);
         for (const s of [-1, 1]) { const rr = 8 * Math.abs(Math.cos(t * 37.69911184307752 + s)); D.line(ctx, [[x + s * 13 - rr, y - 7], [x + s * 13 + rr, y - 7]], '#5d656d', 1.4); }
         if (u < 3.0) IT.chip(ctx, x, y + 12); else if (u < 3.4) IT.chip(ctx, x, TF.lerp(y + 12, INLET[1] - 6, (u - 3.0) / 0.4)); }
+      if (u >= 3.4 && u < 4.2) IT.chip(ctx, INLET[0], INLET[1] - 7.5);   // R3-core-f9: chip waits in the inlet cup until the capsule leaves (dep 4.2)
     } });
 
   // ---------- (c) window drones: payload into a wall tube opening, capsule on to the receiver ----------
@@ -193,17 +195,22 @@
     const oy = L.hY(cfg.floor, cfg.h), ox = cfg.wallX;
     const cap = S.capsule({ id: cfg.id, period: cfg.period, journey: cfg.period, dep: cfg.offset + 3.6, col: cfg.col || '#9333ea', item: cfg.item,
       from: { pts: [[ox - cfg.side * 4, oy], [cfg.to.x, oy]] }, to: cfg.to });
-    TF.transport({ id: cfg.id + '-drone', owner: cfg.owner, period: cfg.period, layer: 'front', box: { x: ox - 60, y: oy - 260, w: 400, h: 300 },
+    TF.transport({ id: cfg.id + '-drone', owner: cfg.owner, period: cfg.period, layer: 'front', box: { x: cfg.side > 0 ? ox - 60 : ox - 1900, y: oy - 260, w: 1960, h: 300 },   // R3-core-ship: box covers the whole fly-in path (no cull pop)
+      
       draw(ctx, t, theme, lod) {
         const u = TF.mod(t - cfg.offset, cfg.period);
         D.rect(ctx, ox - 7, oy - 9, 14, 18, '#dfe4e8', '#7b848c', 1);   // wall tube opening
         D.rect(ctx, ox + cfg.side * 7 - 2, oy - 9 - 7 * TF.pulse(u, 2.6, 3.6, 0.15), 4, 9, '#7b848c');
         if (lod === 'far' || u > 6) return;
-        const k = TF.pulse(u, 0, 6, 2.4), x = ox + cfg.side * (18 + (1 - k) * 1620), y = oy - 14 - (1 - k) * 160 + Math.sin(u * 3) * 2;
+        const k = TF.pulse(u, 0, 6, 2.4), x = ox + cfg.side * (18 + (1 - k) * 1700), y = oy - 14 - (1 - k) * 160 + Math.sin(u * 3) * 2;
         D.rect(ctx, x - 12, y - 3, 24, 7, '#3a3f45', '#1d2125', 0.8);
         for (const s of [-1, 1]) { const rr = 8 * Math.abs(Math.cos(t * 37.69911184307752 + s)); D.line(ctx, [[x + s * 13 - rr, y - 7], [x + s * 13 + rr, y - 7]], '#5d656d', 1.4); }
         const item = IT[cfg.item];
-        if (u < 2.8) item(ctx, x, y + 12); else if (u < 3.3) item(ctx, TF.lerp(x, ox, (u - 2.8) / 0.5), TF.lerp(y + 12, oy + 4, (u - 2.8) / 0.5));
+        if (u < 2.8) item(ctx, x, y + 12);
+        else if (u < 3.6) {   // R3-core-ship: payload slides into the wall tube, cut by the wall face (hidden by 3.4); the capsule departs from the opening at 3.6
+          const q = TF.ramp(u, 2.8, 3.4); ctx.save(); ctx.beginPath();
+          if (cfg.side > 0) ctx.rect(ox + 7, oy - 400, 3000, 800); else ctx.rect(ox - 3007, oy - 400, 3000, 800);
+          ctx.clip(); item(ctx, TF.lerp(x, ox - cfg.side * 12, q), TF.lerp(y + 12, oy + 4, q)); ctx.restore(); }
       } });
     return cap;
   };

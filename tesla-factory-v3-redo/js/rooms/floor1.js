@@ -22,8 +22,8 @@
   // slide duration must match the BL cage off-window so the car is drawn once, clipped at the gate
   const bl = (kind, t0, tOff, slot, deck) => { const p = exitTo(slot, deck), slide = tOff - t0, k = [[0, 1225, yF], [slide, 1475, yF], [Math.max(slide + 0.4, 1.25), STN, yF], [2.75, STN, yF]]; let u = 2.75;
     p.forEach((q, i) => { const pr = i ? p[i - 1] : [STN, yF]; u += Math.max(0.25, Math.hypot(q[0] - pr[0], q[1] - pr[1]) / 320); k.push([u, q[0], q[1]]); }); return veh(kind, t0, k); };
-  bl('modelY', 22.95, 23.55, 300, 'L'); bl('modelY', 10.95, 11.8, 380, 'U'); bl('cab', 15.95, 16.8, 600, 'U');
-  { const p = exitTo(480, 'L'), k = [[0, STN, yF], [1.5, STN, yF]]; let u = 1.5; p.forEach((q, i) => { const pr = i ? p[i - 1] : [STN, yF]; u += Math.max(0.25, Math.hypot(q[0] - pr[0], q[1] - pr[1]) / 320); k.push([u, q[0], q[1]]); }); veh('ct', 3.9, k); }
+  bl('modelY', 22.95, 23.55, 656, 'L'); bl('modelY', 10.95, 11.8, 351, 'U'); bl('cab', 15.95, 16.8, 593, 'U');   // R3-7: slots re-spaced, no overlaps (>=15 px gaps; first in = farthest west)
+  { const p = exitTo(333, 'L'), k = [[0, STN, yF], [1.5, STN, yF]]; let u = 1.5; p.forEach((q, i) => { const pr = i ? p[i - 1] : [STN, yF]; u += Math.max(0.25, Math.hypot(q[0] - pr[0], q[1] - pr[1]) / 320); k.push([u, q[0], q[1]]); }); veh('ct', 3.9, k); }
   const testing = (t) => VEH.some((v) => { const u = TF.mod(t - v.t0, 24); return v.kind !== 'crate' && u >= (v.kind === 'ct' ? 0 : 1.25) && u < (v.kind === 'ct' ? 1.5 : 2.75); });
   const vAt = (v, u) => { const k = v.keys, last = k[k.length - 1]; if (u <= last[0]) { let i = 1; while (i < k.length - 1 && k[i][0] <= u) i++;
       const a = k[i - 1], b = k[i], w = TF.smooth(TF.clamp((u - a[0]) / (b[0] - a[0]), 0, 1)); return [a[1] + (b[1] - a[1]) * w, a[2] + (b[2] - a[2]) * w, (b[1] - a[1]) * w]; }
@@ -54,7 +54,7 @@
       // the Semi: charged on the L21 table, then drives off west through the yard
       { const a = TF.mod(t - 7.6, 24); if (a >= 13.5 && a < 19.6) { const x = semiX(a); V.finished(ctx, 'semi', x, gy(x), lod, { wheelAng: -x / (0.52 * M) }); } }
       // crate on the carrier (forklift drops it on the lower deck at 10.8)
-      const s = s24(t); if (s >= 10.8 || s < 1.0) { const x = 660 + c; { D.rect(ctx, x - 15, DECK.L - 2.0 * M, 30, 2.0 * M, '#d6b07a', '#7d5a2c', 1); D.tLogo(ctx, x, DECK.L - 1.0 * M, 10); } }
+      const s = s24(t); if (s >= 10.8 || s < 1.0) { const x = 505 + c; { D.rect(ctx, x - 15, DECK.L - 2.0 * M, 30, 2.0 * M, '#d6b07a', '#7d5a2c', 1); D.tLogo(ctx, x, DECK.L - 1.0 * M, 10); } }
       ctx.restore();
     } });
 
@@ -174,7 +174,10 @@
       // crate station: flat kit from the basket (window w) folded into a box around the Optimus 6.0-7.0, rollers to 1A 7.6-8.0
       const w = R.crates.window(0, 0), kit = TF.mod(s - w[0] - 0.6, 24);
       D.rect(ctx, CR - 30, yF - 4, 60, 4, '#7b848c');
-      if (kit < TF.mod(6.0 - w[0] - 0.6, 24)) D.rect(ctx, CR - 26, yF - 8, 52, 4, '#d6b07a', '#7d5a2c', 0.8);
+      // R3-core-f1238: the kit lands on a shelf at the basket's stop (rest height 1.0 m), then slides down to the crate station 0.5-1.9 s later
+      D.rect(ctx, 2004, hY(1.0), 32, 3, '#9aa3ab', '#6d757d', 0.6); D.rect(ctx, 2008, hY(1.0) + 3, 3, 1.0 * M - 3, '#8a939b'); D.rect(ctx, 2029, hY(1.0) + 3, 3, 1.0 * M - 3, '#8a939b');
+      if (kit >= 0.5 && kit < TF.mod(6.0 - w[0] - 0.6, 24)) { const e = TF.ramp(kit, 0.5, 1.9), wd = TF.lerp(24, 52, e), kx = TF.lerp(2020, CR, e), ky = TF.lerp(hY(1.0) + 1, yF - 4, e);
+        D.rect(ctx, kx - wd / 2, ky - 4, wd, 4, '#d6b07a', e < 1 ? '#7d5a2c' : '#7d5a2c', 0.8); }
       K.arm(ctx, [CR + 45, yF], s >= 5.5 && s < 7.2 ? [CR + 18, hY(2.0) + 30 * TF.ramp(s, 6.4, 7.0)] : [CR + 40, hY(1.4)], { l1: 40, l2: 36, toolAng: Math.PI, bend: 1, tool: 6 });
       K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 63, lod);
     },
@@ -201,14 +204,30 @@
       D.rect(ctx, 2708, hY(4.55), 10, hY(4.3) - 20 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 2700, hY(4.3) - 20, 26, 9, '#c9d0d6', '#7b848c', 1);                                // vent box (Shiba peek)
       // bending oven tunnel with glowing elements, glass moving through on rollers, cooling rack
+      // R3-core-f1238: blanks ride a feed belt from the basket's table into the oven mouth; bent panes leave the east face on a belt to the cooling rack;
+      // the arm carries the 3-pane bundle rack -> table (hand-off to the basket's load lerp at u 2.1)
+      const bz = TF.ramp(u, 1.1, 1.9), PX = [2691, 2700, 2709], PT = [7.0, 9.5, 12.0], pe = PT.map((a0) => TF.ramp(u, a0, a0 + 2.5));
+      X.belt(ctx, 2552, 2625, yF, 1.0, -72 * bz, lod);
+      X.belt(ctx, 2552, 2682, yF, 1.36, 144 * (pe[0] + pe[1] + pe[2]), lod);
+      if (lod !== 'far') {
+        if (u >= 1.1 && u < 1.9) for (let j = 0; j < 2; j++) IT.blank(ctx, TF.lerp(2600 + (j - 0.5) * 9, 2600 + (j - 0.5) * 9 - 72, bz), hY(1.0) + 1);   // into the oven mouth, hidden behind its face
+        for (let j = 0; j < 3; j++) { if (u >= PT[j] && u < PT[j] + 2.5) IT.pane(ctx, TF.lerp(2538, PX[j], pe[j]), hY(1.36)); }
+      }
       D.rect(ctx, 2360, hY(1.7), 190, 1.0 * M, '#efe6df', '#8b6b5c', 1.2);
       if (lod !== 'far') { ctx.globalAlpha = 0.3 + 0.1 * Math.sin(t * Math.PI); D.rect(ctx, 2364, hY(1.65), 182, 0.9 * M, '#ff9a4a'); ctx.globalAlpha = 1;
         for (let x = 2550 - TF.mod(t * 15, 60); x > 2365; x -= 60) D.poly(ctx, [[x - 12, hY(0.95)], [x + 12, hY(0.95)], [x + 9, hY(1.05)], [x - 9, hY(1.05)]], 'rgba(150,190,220,0.8)', '#5d7d96', 0.6); }
       TF.rollers.draw(ctx, 2340, 2570, hY(0.7) - 5, yF, t * Math.PI, lod);
-      X.rack(ctx, 2680, yF, 0.8, 1.4, 2, u < 2.6 ? 4 : 1, (c, x, y) => IT.pane(c, x + 2, y), lod);
+      X.rack(ctx, 2680, yF, 0.8, 1.4, 2, 0, null, lod);
+      if (lod !== 'far') for (let j = 0; j < 3; j++) if (u >= PT[j] + 2.5 || u < 0.9) IT.pane(ctx, PX[j], hY(1.36));   // finished panes wait on the rack top shelf until the arm bundles them
       // loader arm: blanks out of the basket into the oven, panes from the rack into the basket (during the stop)
-      const k = TF.pulse(u, 0.2, 3.2, 0.6), tip = [TF.lerp(2620, 2600, k), TF.lerp(hY(1.2), hY(1.9), k)];
-      K.arm(ctx, [2630, yF], tip, { l1: 40, l2: 36, toolAng: -Math.PI / 2, bend: -1, tool: 6 });
+      const rk = [2700, hY(1.36) - 8], hv = [2645, hY(1.3)], tb = [2600, hY(1.0) - 7], rs = [2640, hY(1.3)];
+      const tip = u < 0.9 ? [TF.lerp(rs[0], rk[0], TF.ramp(u, 0, 0.9)), TF.lerp(rs[1], rk[1], TF.ramp(u, 0, 0.9))]
+        : u < 1.7 ? [TF.lerp(rk[0], hv[0], TF.ramp(u, 0.9, 1.7)), TF.lerp(rk[1], hv[1], TF.ramp(u, 0.9, 1.7))]
+        : u < 1.9 ? hv : u < 2.1 ? [TF.lerp(hv[0], tb[0], TF.ramp(u, 1.9, 2.1)), TF.lerp(hv[1], tb[1], TF.ramp(u, 1.9, 2.1))]
+        : u < 2.8 ? [TF.lerp(tb[0], rs[0], TF.ramp(u, 2.1, 2.8)), TF.lerp(tb[1], rs[1], TF.ramp(u, 2.1, 2.8))] : rs;
+      D.rect(ctx, 2644, yF - 30, 12, 30, '#9aa3ab', '#6d757d', 0.6);
+      K.arm(ctx, [2650, yF - 30], tip, { l1: 40, l2: 36, toolAng: -Math.PI / 2, bend: -1, tool: 6 });
+      if (lod !== 'far' && u >= 0.9 && u < 2.1) for (let j = 0; j < 3; j++) IT.pane(ctx, tip[0] + (j - 1) * 9, tip[1] + 8);   // bundle in the gripper; basket's load lerp owns it from 2.1
       K.cabinet(ctx, 2330, yF - 46, 18, 46, t, 65, lod);
     },
     draw() {}, front() {} });
@@ -245,7 +264,15 @@
       if (u >= 7.5 && u < 9.2 && lod !== 'far') { D.rect(ctx, 3085, hY(0.9) - 3, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, 3100, hY(0.9) - 3); }
       D.rect(ctx, 2980, hY(1.0), 40, 4, '#9aa3ab'); D.rect(ctx, 2984, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b'); D.rect(ctx, 3012, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');   // landing shelf for the grocery drone
       { const g = TF.mod(t - w0, 24); if (g >= 0.5 && g < 0.9 && lod !== 'far') { IT.groceries(ctx, 2992, hY(1.0)); IT.groceries(ctx, 3008, hY(1.0)); } }   // released -> cook takes them
-      if (u >= 13.7 && u < 22.8 && lod !== 'far') IT.foodcrate(ctx, 3115, hY(0.9));
+      // R3-core-f1238: crate magazine on the counter pushes a flat kit out of its mouth to the pack spot (12.7-13.2); the cook unfolds it into the ship food crate (13.2-13.7)
+      if (lod !== 'far') { if (u >= 12.7 && u < 13.2) IT.kitflat(ctx, TF.lerp(3138, 3112, TF.ramp(u, 12.7, 13.2)), hY(0.9));
+        else if (u >= 13.2 && u < 13.7) { const e = TF.ramp(u, 13.2, 13.7); D.rect(ctx, TF.lerp(3112, 3115, e) - TF.lerp(12, 8, e), hY(0.9) - TF.lerp(4, 9, e), TF.lerp(24, 16, e), TF.lerp(4, 9, e), e > 0.5 ? '#fcd34d' : '#d6b07a', e > 0.5 ? '#a16207' : '#7d5a2c', 0.6); }
+        else if (u >= 13.7 && u < 22.8) IT.foodcrate(ctx, 3115, hY(0.9)); }
+      D.rect(ctx, 3126, hY(0.9) - 22, 24, 22, '#cbd5e1', '#6b7280', 1); D.rect(ctx, 3126, hY(0.9) - 8, 3, 8, '#475569');   // crate magazine (feeds from below, mouth on the west face)
+      // crate ledge by the stove: the cook sets the full crate down 0-0.3 s, the basket's gripper takes it from 15.5 abs (base load)
+      D.rect(ctx, 2938, hY(1.0), 26, 3, '#9aa3ab', '#6d757d', 0.6); D.rect(ctx, 2960, hY(1.0) + 3, 3, 1.0 * M - 3, '#8a939b');
+      { const fc = TF.mod(R.foodCrate.dep + R.foodCrate.journey - 0.5 - w0 + 0.3, 24);
+        if (u < fc && lod !== 'far') { const e = TF.ramp(u, 0, 0.3); IT.foodcrate(ctx, TF.lerp(2957.5, 2950, e), TF.lerp(hY(1.0) + 6, hY(1.0) + 1, e)); } }
       D.rect(ctx, 3170, hY(0.9), 40, 0.9 * M, '#cbd5e1', '#6b7280', 1); D.rect(ctx, 2820, hY(1.1), 30, 1.1 * M, '#dfe4e8', '#7b848c', 1);
       if (lod !== 'far') D.line(ctx, [[2835, hY(1.1)], [2835 + 8 * Math.cos(t * Math.PI * 2), hY(1.1) - 6 + 4 * Math.sin(t * Math.PI * 2)]], '#4a5056', 1.5);
       K.cabinet(ctx, 3220, yF - 46, 18, 46, t, 67, lod);
@@ -255,7 +282,7 @@
       if (lod === 'far') return;
       const u = TF.mod(t - w0 + 0.3, 24), st = cook(t), fig = A.draw(ctx, st, yF), w = fig.w(fig.sk.wristN);
       if (u >= 9.2 && u < 11.5) { D.rect(ctx, w[0] - 15, w[1] - 2, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, w[0], w[1] - 2); }
-      if (u >= 22.8 || u < 0.9) IT.foodcrate(ctx, w[0], w[1] + 6);
+      if (u >= 22.8) IT.foodcrate(ctx, w[0], w[1] + 6);   // R3-core-f1238: set on the crate ledge at u 0
     } });
 
   // ================= 1E cafeteria: ONE server =================

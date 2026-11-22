@@ -36,7 +36,7 @@
       D.rect(ctx, RX + 14, hY(1.3) + 4, 4, yF - (hY(1.3) + 4), '#8a939b');
       D.rect(ctx, RX - 22, hY(1.3), 44, 4, '#9aa3ab');
       if (u >= 15.4) IT.chip(ctx, RX, TF.lerp(hY(4.4), hY(1.3), (u - 15.4) / 0.6)); else if (u < 0.6) IT.chip(ctx, RX, hY(1.3));
-      if (lod !== 'far' && (u >= 0.6 && u < 4.4)) IT.box(ctx, RX + 22, hY(1.3));
+      if (lod !== 'far') { if (u >= 15.4) { const k = (u - 15.4) / 0.6; IT.box(ctx, TF.lerp(RX, RX + 22, k), TF.lerp(hY(4.4), hY(1.3), k)); } else if (u < 4.1) IT.box(ctx, RX + 22, hY(1.3)); }   // R3-core-f9: the parcel drops out of the capsule with the chip
       D.rect(ctx, FLAT + 38, hY(0.45), 34, 0.45 * M, '#c8a15a', '#7c5a1e', 1);
       // flasher with its progress bar
       D.rect(ctx, FL - 22, hY(1.0), 44, 1.0 * M, '#5f6b77', '#3f4851', 1); D.rect(ctx, FL - 16, hY(1.7), 32, 0.6 * M, '#1f2937');
@@ -45,8 +45,11 @@
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; const u = s16(t), f = A.draw(ctx, intake(t), yF), w = f.w(f.sk.wristN);
-      if ((u >= 0.6 && u < 2.6) || (u >= 7.0 && u < 9.5)) IT.chip(ctx, w[0], w[1] + 3);
-      else if (u >= 4.3 && u < 5.5) D.rect(ctx, w[0] - 8, w[1], 16, 2, '#c8a15a'); } });
+      if (u >= 0.6 && u < 1.0) { const k = 1 - TF.lin(u, 0.6, 1.0); IT.chip(ctx, TF.lerp(w[0], RX, k), TF.lerp(w[1] + 3, hY(1.3), k)); }   // R3-core-f9: lifted off the tray
+      else if ((u >= 1.0 && u < 2.6) || (u >= 7.0 && u < 9.5)) IT.chip(ctx, w[0], w[1] + 3);
+      if (u >= 4.1 && u < 4.3) { const k = 1 - TF.lin(u, 4.1, 4.3); IT.box(ctx, TF.lerp(w[0], RX + 22, k), TF.lerp(w[1] + 3, hY(1.3), k)); }   // parcel taken off the tray
+      else if (u >= 4.3 && u < 5.5) D.rect(ctx, w[0] - 8, w[1], 16, 2, '#c8a15a');
+      else if (u >= 5.5 && u < 5.9) { const k = TF.lin(u, 5.5, 5.9); D.rect(ctx, TF.lerp(w[0] - 8, FLAT + 55 - 8, k), TF.lerp(w[1], hY(0.45), k), 16, 2, '#c8a15a'); } } });   // flat parcel dropped into the return basket
 
   // ================= 9B computer lab (pick-place arm builds + tests; the intake Optimus loads the feeder) =================
   const SEND = [[1960, 5.0], [2020, 9.0], [1990, 15.5], [1960, 17.0], [2020, 21.0]];
@@ -69,6 +72,11 @@
       D.rect(ctx, BENCH + 28, ty - 5, 24, 5, done ? '#475569' : '#14532d', '#1e293b', 1);
       if (u >= 13.8 && u < 14.5) { IT.chip(ctx, BENCH + 40, ty - 5); D.line(ctx, [[BENCH + 28, ty - 5], [BENCH + 28 + 24 * TF.lin(u, 13.8, 14.4), ty - 5 - 8 * (1 - TF.lin(u, 13.8, 14.4))]], '#94a3b8', 2); }
       else if (!done) D.line(ctx, [[BENCH + 28, ty - 5], [BENCH + 28, ty - 13]], '#94a3b8', 2);
+      if (u >= 14.0 && u < 14.5) IT.computer(ctx, BENCH + 40, TF.lerp(ty - 14, ty - 2, TF.lin(u, 14.0, 14.4)));   // R3-core-f9: the housing lowers over the placed chip -> computer
+      // R3-core-f9: staging shelf (the computers wait here; the arm sets each new one on it), chutes down-slope to the three PT senders
+      D.rect(ctx, BENCH + 78, ty - 3, 20, 3, '#9aa3ab', '#6d757d', 1); D.rect(ctx, BENCH + 86, ty, 4, yF - ty, '#6d757d');
+      IT.computer(ctx, BENCH + 88, ty - 4);
+      for (const x of [1960, 1990, 2020]) D.line(ctx, [[BENCH + 88, ty - 5], [x, hY(1.6) + 8]], '#b6bec6', 1.5);
       D.circle(ctx, BENCH + 58, ty - 9, 3, done ? '#4ade80' : (u >= 11 ? '#f59e0b' : '#ef4444'));
       D.rect(ctx, BENCH + 31, hY(1.9) + 16, 4, (hY(0.95)) - (hY(1.9) + 16), '#7b848c');
       D.rect(ctx, BENCH + 25, hY(0.95) - 2, 16, 2, '#7b848c');
@@ -85,9 +93,10 @@
     front(ctx, t, theme, lod) { if (lod === 'far') return; const u = s16(t), s = s24(t), ty = hY(0.95), tx = BENCH + armX(u), tyy = ty - armY(u);
       K.arm(ctx, [BENCH + 66, ty], [tx, tyy], { l1: 36, l2: 32, toolAng: Math.PI / 2, bend: 1, tool: 4 });
       if (u >= 11.5 && u < 13.8) IT.chip(ctx, tx, tyy + 4);
-      if (u >= 14.5 && u < 15.2) IT.computer(ctx, tx, tyy + 4); else if (u >= 15.2) IT.computer(ctx, BENCH + 88, ty - 8);
+      if (u >= 14.5 && u < 15.2) IT.computer(ctx, tx, tyy + 4);   // lands on the staging shelf (drawn in back) at 15.2
       // at each capsule departure, a tested computer slides from the staging slot into that sender
-      for (const [x, tm] of SEND) { const k = TF.lin(TF.mod(s - (tm - 0.6) + 24, 24), 0, 0.6); if (k > 0 && k < 1) IT.computer(ctx, TF.lerp(1960, x, k), TF.lerp(ty - 8, hY(1.6), k)); }
+      for (const [x, tm] of SEND) { const k = TF.lin(TF.mod(s - (tm - 0.6) + 24, 24), 0, 0.6); if (k > 0 && k < 1) IT.computer(ctx, TF.lerp(BENCH + 88, x, k), TF.lerp(ty - 4, hY(1.6) + 8, k)); }
+      for (const [x, tm] of SEND) { D.rect(ctx, x - 7, hY(1.6) - 3, 14, 22, '#dfe4e8', '#7b848c', 1); D.circle(ctx, x, hY(1.6) + 2, 2, TF.pulse(s, tm - 0.6, tm + 0.6, 0.2) > 0.5 ? '#4ade80' : '#475569'); }   // sender face drawn over the computer: it slides in behind it
     } });
 
   // ================= 9C solar room (roof panels -> inverters -> battery -> building bus) =================
@@ -155,9 +164,14 @@
       D.rect(ctx, FRAME + 38, hY(0.6) + 4, 4, yF - (hY(0.6) + 4), '#4a5560');
       D.rect(ctx, FRAME, hY(0.6), 46, 4, '#5f6b77');
       if (c >= 17.5 || c < 6) IT.box(ctx, FRAME + 20, hY(0.6));                                                      // foam on the frame
-      else { const g = TF.lin(c, 6, 9); ctx.save(); ctx.beginPath(); ctx.rect(FRAME - 10, hY(0.6) - 1.2 * M * g, 80, 1.3 * M * g + 2); ctx.clip(); IT.seat(ctx, FRAME + 20, hY(0.6)); ctx.restore();
+      else { const g = TF.lin(c, 6, 9);
+        ctx.save(); ctx.beginPath(); ctx.rect(FRAME + 8, hY(0.6) - 8 * (1 - g), 24, 8 * (1 - g) + 1); ctx.clip(); IT.box(ctx, FRAME + 20, hY(0.6)); ctx.restore();   // R3-core-f9: foam is pressed down as the cover is sewn on ...
+        if (g < 1) D.rect(ctx, FRAME + 20 - 12 * (1 - g), hY(0.6) - 8 * (1 - g) - 2, 24 * (1 - g), 2, '#3d3935');
+        ctx.save(); ctx.beginPath(); ctx.rect(FRAME - 10, hY(0.6) - 14 * g, 80, 14 * g + 2); ctx.clip(); IT.seat(ctx, FRAME + 20, hY(0.6)); ctx.restore();   // ... and the seat grows out of it
         if (c >= 14.8) D.circle(ctx, FRAME + 30, hY(0.6) - 14, 2.5, '#4ade80'); }                                    // inspected tag
-      for (const [i, x] of [2850, 2862].entries()) IT.box(ctx, x, yF - i * 8);                                                     // foam stock
+      if (c >= 4.8 && c < 6) { const k = TF.lin(c, 4.8, 5.8); D.rect(ctx, FRAME + 8, TF.lerp(hY(0.6) - 36, hY(0.6) - 10, k), 24, 2, '#3d3935'); }   // R3-core-f9: cover fabric brought down by the sewing arm
+      D.rect(ctx, 2862, hY(1.0) + 1, 36, 4, '#9aa3ab'); D.rect(ctx, 2866, hY(1.0) + 5, 4, yF - hY(1.0) - 5, '#8a939b'); D.rect(ctx, 2890, hY(1.0) + 5, 4, yF - hY(1.0) - 5, '#8a939b');   // R3-core-f9: foam shelf; the basket sets its two boxes exactly here
+      for (const x of [2875.5, 2884.5]) IT.box(ctx, x, hY(1.0) + 1);                                                       // foam stock
       // seat lift: up with the seat 12.3-13.6, back down 14.0-15.2 (r24)
       const h = 1.0 + 3.0 * (TF.ramp(r, 12.3, 13.6) - TF.ramp(r, 14.0, 15.2));
       X.liftTable(ctx, LIFT, yF, 0.7, h, lod); if (r >= 10.4 && r < 22 && !TF.R.seats.holding(t)) IT.seat(ctx, LIFT, hY(h));   // seat rides the lift until the seats drone's gripper takes it (supply.js held())

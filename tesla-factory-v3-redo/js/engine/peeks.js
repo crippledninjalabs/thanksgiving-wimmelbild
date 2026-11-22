@@ -4,7 +4,7 @@
 // Usage (from a room module): TF.peek({ id, owner, kind, P, offset, dur, x, y, face?, hatch? })
 //   kind: 'shiba' (head pops out of a hatch/vent at y), 'wave' (Optimus climbs up through a catwalk hatch at y and
 //   waves), 'drone' (flies up to a high window at x, y and peeks in), 'hardhat' (rests on a pipe at x, y, wobbles).
-// Boot checks: P prime and distinct, P >= dur + 6, neutral at t = 0 and t = 48 (so the 48 s loop seam stays clean).
+// Boot checks: P prime and distinct, P >= dur + 6, neutral at t = 0 and t = TF.SCENE=192 (R3-retime; P prime or a divisor of 192).
 (function (G) {
   const TF = G.TF, D = TF.draw, A = TF.act;
   TF.peeks = [];
@@ -79,24 +79,24 @@
   TF.checkPeeks = () => {
     const problems = [], seen = {};
     for (const p of TF.peeks) {
-      if (!prime(p.P)) problems.push(`peek ${p.id}: period ${p.P} is not prime`);
+      if (!prime(p.P) && TF.SCENE % p.P !== 0) problems.push(`peek ${p.id}: period ${p.P} is not prime (or a divisor of the scene loop)`);
       if (seen[p.P]) problems.push(`peek ${p.id}: period ${p.P} shared with ${seen[p.P]}`); seen[p.P] = p.id;
       if (p.P < p.dur + 6) problems.push(`peek ${p.id}: period too short for its window`);
-      for (const tt of [0, TF.LOOP]) if (TF.peekU(p, tt) !== null) problems.push(`peek ${p.id}: active at t=${tt} (loop seam)`);
+      for (const tt of [0, TF.SCENE]) if (TF.peekU(p, tt) !== null) problems.push(`peek ${p.id}: active at t=${tt} (loop seam)`);
       if (!K[p.kind]) problems.push(`peek ${p.id}: unknown kind ${p.kind}`);
     }
     // Peek primes already in use must stay unique; gag primes (FACTORY-MAP §7) may be used by exactly one gag.
     const peekP = TF.peeks.map((p) => p.P);
-    const gagReserved = [53, 61, 67, 71, 89, 127, 192];
+    const gagReserved = [53, 61, 67, 71, 48, 96, 192];
     for (const p of TF.peeks) if (gagReserved.includes(p.P)) problems.push(`peek ${p.id}: period ${p.P} is reserved for a gag`);
     const gagP = {};
     for (const g of TF.gagHooks) {
-      if (!prime(g.P) && g.P !== TF.SCENE) problems.push(`gag ${g.id}: period ${g.P} is not prime (or the scene loop)`);
+      if (!prime(g.P) && TF.SCENE % g.P !== 0) problems.push(`gag ${g.id}: period ${g.P} is not prime (or a divisor of the scene loop)`);
       if (peekP.includes(g.P)) problems.push(`gag ${g.id}: period ${g.P} is used by a peek`);
       if (gagP[g.P]) problems.push(`gag ${g.id}: period ${g.P} shared with ${gagP[g.P]}`);
       gagP[g.P] = g.id;
       if (g.P < 24 * (g.cycles + 1)) problems.push(`gag ${g.id}: P >= 24 (k + 1) violated`);
-      for (const tt of [0, TF.LOOP]) if (TF.gagActive(g, tt)) problems.push(`gag ${g.id}: active at t=${tt}`);
+      for (const tt of [0, TF.SCENE]) if (TF.gagActive(g, tt)) problems.push(`gag ${g.id}: active at t=${tt}`);
     }
     return problems;
   };

@@ -13,7 +13,7 @@
   const dOpen = (a) => Math.max(TF.pulse(a, 53.8, 54.6, 0.3), TF.pulse(a, 63.2, 66.8, 0.4), TF.pulse(a, 100.5, 103.5, 0.6));
   const chain = (TF.line4 = TF.chain({ id: 'F4', period: 24, t0: 0, life: 110.2, keys: KEYS,
     extra: (a) => ({ castF: a >= 4.5, castR: a >= 9.5, ring: a >= 14.5, beads: TF.lin(a, 26, 32), paint: TF.lin(a, 33, 41), door: a >= 52.1, doorOpen: dOpen(a),
-      seats: a >= 65, screen: a >= 99 ? 1 : a >= 66.5 ? 0.3 : 0, pack: a >= 78, wheels: a >= 85, lit: a >= 97,
+      seats: a >= 65, screen: a >= 99 ? 1 : a >= 66.5 ? 0.3 : 0, pack: a >= 78, wheels: a >= 85, wheelsF: a >= 82.2 - 1e-6, wheelsR: a >= 84.9 - 1e-6, cart: 1 - TF.ramp(a, 85, 87), lit: a >= 97,
       wheelAng: a > 85 ? -(xAt(a) - ST.B) / (0.4 * M) : 0 }) }));
   TF.transport({ id: 'F4-cabs', owner: '4E', period: 24, layer: 'main', box: { x: L.X0, y: ceil, w: L.X1 - L.X0, h: 320 },
     draw(ctx, t, theme, lod) {
@@ -25,14 +25,14 @@
   const rollers = (ctx, x0, x1, t, lod) => TF.rollers.draw(ctx, x0, x1, yF - 0.33 * M, yF, rollAng(t), lod);
 
   // ingot: BL stop F4 3.1-3.7 slides it out into 4A; an AGV dolly carries it along the front lane to the 4E furnace
-  const ingotX = (s) => TF.keys(s, [[3.15, 1287], [3.65, 1400], [4.2, 1400], [10.0, 3610], [10.6, 3680]]);
+  const ingotX = (s) => s < 3.65 ? Math.min(1287 + (L.X0 - 1100) * TF.smooth((s - 3.15) / 0.5), 1400) : TF.keys(s, [[3.65, 1400], [4.2, 1400], [10.0, 3610], [10.6, 3680]]);   // R3-core-f54: same curve as the cage's slide (x0 1100 .. gate L.X0), parked at 1400
   const dollyX = (s) => TF.keys(s, [[3.6, 1400], [4.2, 1400], [10.0, 3610], [10.8, 3610], [16.8, 1400]]);
   TF.transport({ id: 'F4-ingot-dolly', owner: '4A', period: 24, layer: 'front', box: { x: L.X0, y: ceil, w: L.X1 - L.X0, h: 320 },
     draw(ctx, t, theme, lod) {
       const s = sOf(t), dx = dollyX(s);
       D.rect(ctx, dx - 16, yF - 9, 32, 7, '#f2c230', '#9c7a12', 0.8); D.circle(ctx, dx - 10, yF - 2, 2.5, '#1d1f22'); D.circle(ctx, dx + 10, yF - 2, 2.5, '#1d1f22');
       if (lod !== 'far') K.beacon(ctx, dx + 12, yF - 12, t, s >= 4.2 && s < 16.8);
-      if (s >= 3.15 && s < 10.6) { ctx.save(); ctx.beginPath(); ctx.rect(L.X0, ceil, 3640 - L.X0, 330); ctx.clip(); TF.parts.ingot(ctx, ingotX(s), yF - (s >= 4.2 ? 9 : 0), lod, 0); ctx.restore(); }
+      if (s >= 3.15 && s < 10.6) { ctx.save(); ctx.beginPath(); ctx.rect(L.X0, ceil, 3647 - L.X0, 330); ctx.clip(); TF.parts.ingot(ctx, ingotX(s), yF - (s >= 4.2 ? 9 : 0), lod, 0); ctx.restore(); }
     } });
 
   // ================= 4E castings =================
@@ -114,6 +114,7 @@
 
   // ================= 4C fit-out: ONE Optimus for door, seats, computer, cabin screen (§10) =================
   const OC = 2575, OF = 2852;
+  const SEAT_A = TF.mod(TF.R.seats.window(0, 1)[0] + 1.1, 24), PANE_A = TF.mod(TF.R.glass.window(0, 2)[0] + 1.1, 24);   // basket unload lerp ends
   const opt4 = (() => {
     const door = A.reach([0.3, 1.1], [0.15, 1.15], { gripN: 0.9, gripF: 0.9 }), up = A.reach([0.5, 1.45], [0.35, 1.4], { gripN: 0.9, gripF: 0.9, head: -0.2 });
     const low = A.reach([0.45, 0.75], [0.3, 0.8], { lean: 0.35, hipY: 0.84, head: 0.35, gripN: 0.9, gripF: 0.9 });
@@ -140,7 +141,14 @@
     back(ctx, t, theme, lod) {
       rollers(ctx, 2320, 2790, t, lod);
       X.upper(ctx, yF, ceil, t, lod, { pipes: [2320, 2470, 3.5], valves: [2400], tray: [2600, 2780, 3.3], duct: [2600, 2780, 4.2], fans: [2700], lamps: [2450, 2700] });
-      X.rack(ctx, 2420, yF, 0.8, 1.2, 2, 2, (c, x, y) => IT.seat(c, x, y), lod);
+      // R3-core-f54: one shelf at the basket's rest height (1.0 m): the basket's seat + pane land on it and stay until fitted
+      const s4 = sOf(t);
+      if (lod !== 'far') {
+        if (s4 >= SEAT_A - 1e-6 && s4 < 15.6) IT.seat(ctx, 2440, hY(1.0) + 1);
+        if (s4 >= PANE_A - 1e-6 && s4 < 16.6) IT.pane(ctx, 2470, hY(1.0) + 1);
+        else if (s4 >= 16.6 && s4 < 17.4) IT.pane(ctx, 2470, hY(1.0) + 1 + 12 * TF.ramp(s4, 16.6, 17.4));   // sinks behind the cab's tail skin
+      }
+      X.rack(ctx, 2420, yF, 1.2, 1.0, 1, 0, null, lod);
       D.rect(ctx, 2330, hY(1.85), 20, 16, '#dfe4e8', '#7b848c', 1); D.rect(ctx, 2370, hY(2.35), 20, 16, '#dfe4e8', '#7b848c', 1);
       K.cabinet(ctx, 2740, yF - 48, 20, 48, t, 35, lod);
     },
@@ -149,6 +157,7 @@
       if (lod === 'far') return;
       const s = sOf(t), st = opt4(t);
       const fig = A.draw(ctx, st, yF);
+      if (s >= 15.6 && s < 17.0) { const k = TF.ramp(s, 15.6, 16.6); IT.seat(ctx, TF.lerp(2440, 2548, k), TF.lerp(hY(1.0) + 1, hY(0.56), k)); }   // R3-core-f54: pushed into the cab; the cab draws its own seat from a 65 (s 17)
       if (s >= 0.4 && s < 4.1) { const w = fig.w(fig.sk.wristN); doorShape(ctx, w[0] - st.face * 6, w[1] + 4, 1); }
       if (s >= 10.3 && s < 12.0) { const w = fig.w(fig.sk.wristN); doorShape(ctx, w[0], w[1] + 4, 0); }
       if (s >= 16.8 && s < 18.0) { const w = fig.w(fig.sk.wristN); IT.cabScreen(ctx, w[0], w[1] + 3); }
@@ -156,6 +165,7 @@
 
   // ================= 4B pack + wheels =================
   const pb4 = TF.PB.trip('4B');
+  const WS = TF.wheelStand({ k: 1, xd: 2060, x: 2262, yF, rs: [0.44 * M, 0.38 * M], picks: [8.6, 11.1], o: { rim: '#e4c286', cover: true } });
   TF.room({ id: '4B', period: 24, box: L.roomById('4B').box,
     ports: { D4BC: 'in', D4AB: 'out', PB: 'in', F4R: 'both' },
     actors: ['4B.liftTable', '4B.wheelArm', 'peek.shiba4B'],
@@ -171,21 +181,21 @@
       const u = TF.mod(t - pb4.te, 24), on = u < 3.4, k = TF.ramp(u, 1.6, 3.2);
       X.liftTable(ctx, ST.B, yF, 1.6, 0.08 + 0.22 * k, lod);
       if (on) D.rect(ctx, TF.lerp(TF.PB.XU + 30, ST.B, TF.ramp(u, 0.1, 1.2)) - 42, yF - (0.13 + 0.22 * k) * M, 84, 5, '#2a2e33', '#111', 0.6);
-      D.rect(ctx, 2262 - 0.4 * M - 2, hY(0.6), 0.4 * M + 14, 0.6 * M, '#2f6fb0', '#1d4570', 1); if (lod !== 'far') IT.wheels(ctx, 2262, hY(0.6), 0.4 * M);
+      WS.fixture(ctx); WS.draw(ctx, t, lod);   // R3-core-wheels: tote follows the basket + the arm's picks
       K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 37, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
-      const s = sOf(t), car = chain.inWindow(t, 72, 92), cx = car ? car.x : ST.B, pick = [2262, hY(0.8)];
-      const hub = (ax) => [cx + ax * M, hY(0.4)];
+      const s = sOf(t), car = chain.inWindow(t, 72, 92), cx = car ? car.x : ST.B, pk1 = WS.pick(0), pk2 = WS.pick(1);
+      const hub = (ax) => [cx + ax * M, hY(ax > 0 ? 0.38 : 0.44)];   // R3-8b: hub = mounted wheel centre (front r .38, rear r .44)
       const go = (a, b, k) => [TF.lerp(a[0], b[0], k), TF.lerp(a[1], b[1], k)];
       let p = [2230, hY(1.1)], carry = false;
-      if (s >= 8 && s < 10.5) { p = s < 8.6 ? go([2230, hY(1.1)], pick, TF.ramp(s, 8, 8.6)) : go(pick, hub(1.32), TF.ramp(s, 8.9, 10.2)); carry = s >= 8.6 && s < 10.2; }
-      else if (s >= 10.5 && s < 13.3) { p = s < 11.1 ? go(hub(1.32), pick, TF.ramp(s, 10.5, 11.1)) : go(pick, hub(-1.18), TF.ramp(s, 11.4, 12.9)); carry = s >= 11.1 && s < 12.9; }
+      if (s >= 8 && s < 10.5) { p = s < 8.6 ? go([2230, hY(1.1)], pk1, TF.ramp(s, 8, 8.6)) : go(pk1, hub(1.32), TF.ramp(s, 8.9, 10.2)); carry = s >= 8.6 - 1e-6 && s < 10.2 - 1e-6; }
+      else if (s >= 10.5 && s < 13.3) { p = s < 11.1 ? go(hub(1.32), pk2, TF.ramp(s, 10.5, 11.1)) : go(pk2, hub(-1.18), TF.ramp(s, 11.4, 12.9)); carry = s >= 11.1 - 1e-6 && s < 12.9 - 1e-6; }
       else if (s >= 13.3 && s < 14) p = go(hub(-1.18), [2230, hY(1.1)], TF.ramp(s, 13.3, 14));
       K.arm(ctx, [2236, yF], p, { l1: 48, l2: 44, toolAng: Math.PI, bend: 1, tool: 8 });
-      if (carry) IT.tireAt(ctx, p[0], p[1], 0.4 * M, { rim: '#e4c286', cover: true });
+      if (carry) IT.tireAt(ctx, p[0], p[1], (s < 11 ? 0.38 : 0.44) * M, { rim: '#e4c286', cover: true });
     } });
 
   // ================= 4A test drive + BL =================

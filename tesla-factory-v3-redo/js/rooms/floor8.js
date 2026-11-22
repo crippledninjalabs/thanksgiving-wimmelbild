@@ -39,6 +39,7 @@
     } });
 
   // ================= 8A tile kiln (ONE tile Optimus, 24 s) =================
+  const BT = TF.mod(R.silica.window(0, 0)[0] + 1.1, 24);   // blank lerp ends on the ledge
   const KILN = [1640, 1740], tile = (ctx, x, y, black) => D.rect(ctx, x - 7, y - 4, 14, 4, black ? '#1f2329' : '#f3f4f6', '#6b737b', 0.6);
   const tileOpt = (() => {
     const up = A.reach([0.35, 1.9], [0.2, 1.85], { gripN: 0.9, head: -0.35 }), hand = A.reach([0.42, 1.0], [0.28, 1.0], { gripN: 0.9, gripF: 0.9 });
@@ -62,6 +63,10 @@
     back(ctx, t, theme, lod) {
       const s = s24(t);
       X.upper(ctx, yF, ceil, t, lod, { duct: [1400, 1600, 4.3], fans: [1450], pipes: [1360, 1820, 3.6], valves: [1500, 1780], lamps: [1500, 1700] });
+      // R3-core-f1238: the basket sets two blanks on the ledge (1.0 m); the cook takes one, the other slides west into the blank bin (behind its front face)
+      D.rect(ctx, 1446, hY(1.0), 40, 3, '#9aa3ab', '#6d757d', 0.6); D.rect(ctx, 1450, hY(1.0) + 3, 3, 1.0 * M - 3, '#8a939b');
+      if (lod !== 'far' && s >= BT && s < BT + 0.6) IT.blank(ctx, TF.lerp(1455.5, 1434, TF.ramp(s, BT, BT + 0.6)), hY(1.0) + 1);
+      D.rect(ctx, 1420, hY(1.25), 26, 1.25 * M, '#cbd5e1', '#6b7280', 1); D.rect(ctx, 1424, hY(1.25) + 6, 18, 4, '#475569');
       D.rect(ctx, 1568, hY(4.55), 10, hY(4.3) - 20 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);   // collar up to the floor trunk
       D.rect(ctx, 1560, hY(4.3) - 20, 26, 9, '#c9d0d6', '#7b848c', 1);                              // vent box (Shiba peek)
       X.press(ctx, 1555, yF, 0.8, 1.9, TF.pulse(s, 5.3, 6.6, 0.3), lod);
@@ -77,7 +82,7 @@
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; const s = s24(t), st = tileOpt(t), f = A.draw(ctx, st, yF), w = f.w(f.sk.wristN);
-      if ((s >= 2.2 && s < 4.5)) tile(ctx, w[0], w[1] + 4, false); if ((s >= 9.0 && s < 10.6) || (s >= 12.4 && s < 16.3)) tile(ctx, w[0], w[1] + 4, s >= 12); } });
+      if ((s >= BT && s < 4.5)) tile(ctx, w[0], w[1] + 4, false); /* R3-core-f1238: from the frame the basket's blank lands */ if ((s >= 9.0 && s < 10.6) || (s >= 12.4 && s < 16.3)) tile(ctx, w[0], w[1] + 4, s >= 12); } });
 
   // ================= 8B ring roller =================
   TF.room({ id: '8B', period: 48, box: L.roomById('8B').box,
@@ -210,6 +215,11 @@
         if (u >= 42.45 && u < 45.9) D.circle(ctx, RECP[0], RECP[1], 8, '#cbd5e1', '#2b2f34', 1);                                         // new pump: on the receiver until the hand takes it
         if (u >= 42.45 && u < 46.0) D.rect(ctx, RECI[0] - 6, RECI[1] - 4, 12, 8, '#ef4444', '#7f1d1d', 0.8);                              // injector box: same
       }
+      // R3-core-f1238: scrap-tote magazine (mouth on its west face) pushes a tote onto the basket's shelf 4.8 s before each load grip; the tote waits there until the gripper takes it
+      { const l0 = TF.mod(R.silica.window(0, 1)[0] + 0.6 + 1.4 - 0.5, 24), sm = TF.mod(u, 24), tp = TF.mod(sm - (l0 - 4.8), 24), gr = R.silica.grip(t, 1);
+        D.rect(ctx, 2916, hY(1.0), 60, 3, '#9aa3ab', '#6d757d', 0.6); D.rect(ctx, 2920, hY(1.0) + 3, 3, 1.0 * M - 3, '#8a939b');
+        if (lod !== 'far' && !gr) { if (tp < 0.6) IT.scrap(ctx, TF.lerp(2960, 2930, TF.ramp(tp, 0, 0.6)), hY(1.0) + 1); else if (tp < 4.8) IT.scrap(ctx, 2930, hY(1.0) + 1); }
+        D.rect(ctx, 2950, hY(1.0) - 22, 24, 22, '#cbd5e1', '#6b7280', 1); D.rect(ctx, 2950, hY(1.0) - 14, 3, 14, '#475569'); }
       D.rect(ctx, 3010, yF - 14, 22, 14, '#7d5a2c', '#4a3420', 1);                                                                        // scrap tote box: always on the floor
       if (lod !== 'far' && (u >= 45.1 || u < 26.4)) D.circle(ctx, BOXP[0], BOXP[1], 8, '#78716c', '#2b2f34', 1);                         // old pump rests on it until the tech takes it to the basket
       K.cabinet(ctx, 2820, yF - 46, 18, 46, t, 87, lod);
@@ -220,7 +230,8 @@
       const u = s48(t), st = tech(t), fig = A.draw(ctx, st, yF), wN = fig.w(fig.sk.wristN), wF = fig.w(fig.sk.wristF), ue = u < 20 ? u + 48 : u, ow = st.ovr || 0;
       const pump = (kind, p) => D.circle(ctx, p[0], p[1], 8, kind === 'old' ? '#78716c' : '#cbd5e1', '#2b2f34', 1), hand = [wN[0], wN[1] + 4];
       if (u >= 42.8 && u < 45.1) pump('old', u < 43.2 ? lerp2(SITE, hand, TF.ramp(u, 42.8, 43.2)) : u >= 44.6 ? lerp2(hand, BOXP, TF.ramp(u, 44.6, 45.1)) : hand);   // Raptor -> hand -> tote box
-      if (u >= 26.4 && u < 29.2) pump('old', u < 26.9 ? lerp2(BOXP, hand, TF.ramp(u, 26.4, 26.9)) : hand);                                                  // tote box -> hand -> basket
+      if (u >= 26.4 && u < 29.2) pump('old', u < 26.9 ? lerp2(BOXP, hand, TF.ramp(u, 26.4, 26.9)) : hand);
+      if (u >= 29.2 && u < 29.6) { ctx.save(); ctx.beginPath(); ctx.rect(2800, hY(4), 300, hY(1.0) - 8 - hY(4)); ctx.clip(); pump('old', lerp2(hand, [2930, hY(1.0) + 10], TF.ramp(u, 29.2, 29.6))); ctx.restore(); }   // R3-core-f1238: the old pump drops into the scrap tote on the shelf (below its rim)                                                  // tote box -> hand -> basket
       if (ue >= 45.9 && ue < 48.7) pump('new', ue < 46.3 ? lerp2(RECP, hand, TF.ramp(ue, 45.9, 46.3)) : ue >= 48.3 ? lerp2(hand, SITE, TF.ramp(ue, 48.3, 48.7)) : hand);   // receiver -> hand -> Raptor
       if (ue >= 46.0 && ue < 49.7) { const p = ue < 46.4 ? lerp2(RECI, wF, TF.ramp(ue, 46.0, 46.4)) : ue >= 49.3 ? lerp2(wF, INJ, TF.ramp(ue, 49.3, 49.7)) : wF; D.rect(ctx, p[0] - 6, p[1] - 3, 12, 8, '#ef4444', '#7f1d1d', 0.8); }
       if (u >= 32.2 && u < 34.9) D.rect(ctx, wN[0] - 6, wN[1] - 1, 12, 4, '#8b6b3d', '#4a3420', 0.8);                                       // pad brush

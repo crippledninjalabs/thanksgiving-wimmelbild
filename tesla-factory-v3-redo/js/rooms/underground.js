@@ -35,35 +35,49 @@
     return hi - p * (hi - lo);
   };
 
-  // utility Optimus: BA climb/valve then walk to BB screens and back (24 s)
+  // utility Optimus (R3-1): walk to the tank's west ladder, climb to the roof catwalk, turn the roof valve,
+  // climb down, walk to BB and work the panel, walk home (24 s). Tank/ladder geometry shared with draw().
+  const RG3 = TF3.rig, climbC = TF3.clips.climb(0.17, 0.3);
+  const UT = { tankX: BA.x + 80, tankY: G0 + 100, FL: G0 + BA.h - 12 };
+  UT.ladX = UT.tankX - 14; UT.rx = UT.ladX - 0.17 * M; UT.roofY = UT.tankY - 3;
+  UT.vx = UT.tankX + 66; UT.vy = UT.tankY - 14; UT.hm = (UT.FL - UT.roofY) / M;
+  const climbPose = (p, n) => { const q = p * n, k = Math.min(n - 1, Math.floor(q)); const o = climbC.sample(Math.min(q - k, 0.99999)); o.props = {}; return o; };
   const utilAt = (t) => {
     const u = s24(t);
-    const yBA = G0 + BA.h - 12, yValve = G0 + 80, yBB = G0 + BB.h - 12;
-    const xTank = BA.x + 160, xValve = BA.x + 150, xBB = BB.x + 220, xHome = BA.x + 80;
-    let x = xHome, y = yBA, face = 1, pose = A.idle(t), carry = false;
-    if (u < 4) { x = xHome; y = yBA; pose = A.idle(t); }
-    else if (u < 8) { // climb
-      x = xValve; y = TF.lerp(yBA, yValve, TF.ramp(u, 4, 8));
-      pose = A.reach([0.3, 1.6], [0.2, 1.4], { gripN: 1, head: -0.4 });
-    } else if (u < 10) { // turn valve
-      x = xValve; y = yValve;
-      pose = A.reach([0.45, 1.2], [0.2, 1.1], { gripN: 1, lean: 0.15 });
-    } else if (u < 14) { // down
-      x = xValve; y = TF.lerp(yValve, yBA, TF.ramp(u, 10, 14));
-      pose = A.reach([0.3, 1.6], [0.2, 1.4], { gripN: 1, head: -0.4 });
-    } else if (u < 16) { // walk to BB
-      x = TF.lerp(xValve, xBB, TF.ramp(u, 14, 16)); y = yBA; face = 1;
-      pose = A.idle(t); // walk-ish: use a reach swing
-      const st = A.walk(2, xValve, xBB, { step: 0.55 }).f(TF.ramp(u, 14, 16), (u - 14));
-      return { x: st.x, face: st.face, pose: st.pose, y: yBA };
-    } else if (u < 20) {
-      x = xBB; y = yBB; face = 1;
-      pose = A.reach([0.4, 1.1], [0.2, 1.0], { gripN: 0.4, head: -0.1 });
-    } else {
-      const st = A.walk(4, xBB, xHome, { step: 0.55 }).f(TF.ramp(u, 20, 24), (u - 20));
-      return { x: st.x, face: st.face, pose: st.pose, y: yBA };
+    const yBA = UT.FL, yBB = G0 + BB.h - 12, xBB = BB.x + 220, xHome = BA.x + 30;
+    const out = (st, y) => ({ x: st.x, face: st.face, pose: st.pose, y });
+    const sw = Math.sin(u * 2.4);
+    const rest = (hx, hy) => A.reach([hx, hy], [hx - 0.1, hy - 0.05], { gripN: 0.3, head: 0.05 * sw });
+    if (u < 0.3 || u >= 23.3) return { x: xHome, face: 1, pose: A.idle(t), y: yBA };
+    if (u < 1.3) return out(A.walk(1, xHome, UT.rx, { step: 0.4 }).f(TF.ramp(u, 0.3, 1.3), u - 0.3), yBA);
+    if (u < 4.8) { // climb up the west-wall ladder, facing it
+      const p = TF.ramp(u, 1.3, 4.8), ph = (u < 1.6) ? RG3.blend(A.stand(), climbPose(0, 6), TF.ramp(u, 1.3, 1.6)) : climbPose(p, 6);
+      return { x: UT.rx, face: 1, pose: ph, y: yBA - p * UT.hm * M };
     }
-    return { x, face, pose, y };
+    if (u < 6.4) { // step onto the roof catwalk, walk to the valve
+      const st = A.walk(1, UT.rx, UT.vx - 0.5 * M, { step: 0.4 }).f(TF.ramp(u, 4.8, 6.4), u - 4.8);
+      return { x: st.x, face: 1, pose: u < 5.1 ? RG3.blend(climbPose(0.9999, 6), st.pose, TF.ramp(u, 4.8, 5.1)) : st.pose, y: UT.roofY };
+    }
+    const xr = UT.vx - 0.5 * M;
+    if (u < 10.6 && u >= 6.4) { // hand to the wheel rim, turn it (u 8-10), release
+      const vA = (u >= 8 && u < 10) ? 0.2 + (u - 8) * Math.PI : 0.2, a = vA + 2.4;
+      const rx = UT.vx + 8 * Math.cos(a), ry = UT.vy + 8 * Math.sin(a);
+      const k = u < 8 ? TF.ramp(u, 6.4, 7.4) : u >= 10 ? 1 - TF.ramp(u, 10, 10.4) : 1;
+      const hx = TF.lerp(0.3, (rx - xr) / M, k), hy = TF.lerp(1.0 + 0.04 * sw, (UT.roofY - ry) / M, k);
+      const x = u >= 10.3 ? TF.lerp(xr, UT.rx, TF.ramp(u, 10.3, 10.6)) : xr;
+      return { x, face: u >= 10.3 ? -1 : 1, pose: A.reach([hx, hy], [hx - 0.08, hy - 0.04], { gripN: k, lean: 0.35 * k, head: -0.25 * k }), y: UT.roofY };
+    }
+    if (u < 13.6) { // climb down, facing the ladder
+      const p = 1 - TF.ramp(u, 10.6, 13.6), n = 6;
+      const ph = (u < 10.9) ? RG3.blend(A.stand(), climbPose(p, n), TF.ramp(u, 10.6, 10.9)) : (u > 13.3) ? RG3.blend(climbPose(p, n), A.stand(), TF.ramp(u, 13.3, 13.6)) : climbPose(p, n);
+      return { x: UT.rx, face: 1, pose: ph, y: yBA - p * UT.hm * M };
+    }
+    if (u < 17.6) return out(A.walk(3.2, UT.rx, xBB, { step: 0.55 }).f(TF.ramp(u, 13.6, 17.6), u - 13.6), yBA);
+    if (u < 20) { // service panel at BB: hand moves across the panel, head follows
+      const w = Math.sin(u * 3);
+      return { x: xBB, face: 1, pose: A.reach([0.4 + 0.04 * w, 1.1 + 0.05 * Math.sin(u * 2)], [0.2, 1.0], { gripN: 0.4 + 0.3 * Math.max(0, w), head: -0.1 + 0.1 * w }), y: yBB };
+    }
+    return out(A.walk(3.3, xBB, xHome, { step: 0.55 }).f(TF.ramp(u, 20, 23.3), u - 20), yBA);
   };
 
   TF.transport({ id: 'Underground', period: 24, layer: 'back', box: { x: 0, y: G0 - 10, w: L.W, h: L.H - G0 + 20 },
@@ -81,16 +95,21 @@
       // ----- BA coolant plant: buffer tank (valve + ladder) + chiller; blue supply up, red return down -----
       chamber(ctx, BA, '#eef2f6');
       const FL = G0 + BA.h - 12;
-      const tankX = BA.x + 80, tankW = 160, tankH = 220, tankY = G0 + 40;
+      const tankX = BA.x + 80, tankW = 160, tankH = 160, tankY = G0 + 100;   // top lowered (R3-1): robot + railing fit below G0
       // level: low 0-8, fills after the valve 8-16, drains 16-24 back to low
       const clev = u < 8 ? 0.28 : u < 16 ? 0.28 + TF.ramp(u, 8, 16) * 0.52 : 0.80 - TF.ramp(u, 16, 24) * 0.52;
       D.rect(ctx, tankX, tankY, tankW, tankH, '#e2e8f0', '#64748b', 1.5);
       D.rect(ctx, tankX + 3, tankY + tankH * (1 - clev), tankW - 6, tankH * clev, '#7dd3fc');
       D.rect(ctx, tankX, tankY, tankW, tankH, null, '#64748b', 1.5);
-      K.gauge(ctx, tankX + tankW - 26, tankY + 40, 14, clev, lod);
-      K.ladder(ctx, tankX + 20, FL, (FL - (tankY + 20)) / M, 0.3);
-      const vAng = (u >= 8 && u < 10) ? (u - 8) * Math.PI : 0.2;
-      K.valve(ctx, tankX + 70, tankY + 20, 10, vAng);
+      K.gauge(ctx, tankX + tankW - 26, tankY + 30, 14, clev, lod);
+      // west-wall ladder (outside the tank), roof catwalk + railing, roof valve on a pipe stub
+      K.ladder(ctx, UT.ladX, FL, (FL - UT.roofY) / M, 0.3);
+      D.rect(ctx, tankX - 22, UT.roofY, 100, 3, '#94a3b8', '#475569', 1);
+      D.line(ctx, [[tankX - 22, UT.roofY], [tankX - 22, UT.roofY - 22], [tankX - 22 + 8, UT.roofY - 22]], '#64748b', 2);
+      D.line(ctx, [[tankX + 78, UT.roofY], [tankX + 78, UT.roofY - 22]], '#64748b', 2);
+      D.line(ctx, [[UT.vx, tankY], [UT.vx, UT.vy + 8]], '#64748b', 4);
+      const vAng = (u >= 8 && u < 10) ? 0.2 + (u - 8) * Math.PI : 0.2;
+      K.valve(ctx, UT.vx, UT.vy, 8, vAng);
       // chiller: body, louvres, two fan tops, compressor drum with spinning coupling
       const cx0 = BA.x + 280, cw = 170, cTop = G0 + 214;
       D.rect(ctx, cx0, cTop, cw, FL - cTop, '#d5dde6', '#475569', 1.8);

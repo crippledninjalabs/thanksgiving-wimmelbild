@@ -91,7 +91,9 @@
     },
     draw() {},
     front(ctx, t, theme, lod) { if (lod === 'far') return; const st = feeder(t), f = A.draw(ctx, st, yF), s = s24(t);
-      if ((s >= 0.6 && s < 6.2) || (s >= 6.7 && s < 10.2) || (s >= 11.3 && s < 20)) { const w = f.w(f.sk.wristN); IT.tote(ctx, w[0], w[1] + 6); } } });
+      if ((s >= 0.6 && s < 6.2) || (s >= 6.7 && s < 10.2) || (s >= 11.3 && s < 20)) { const w = f.w(f.sk.wristN); IT.tote(ctx, w[0], w[1] + 6); }
+      else if ((s >= 10.2 && s < 10.6) || (s >= 10.9 && s < 11.3)) { const w = f.w(f.sk.wristN), k = s < 10.6 ? TF.lin(s, 10.2, 10.6) : 1 - TF.lin(s, 10.9, 11.3);   // R3-core-f9: set the tote down on / lift it from the 7C bench (2420)
+        IT.tote(ctx, TF.lerp(w[0], 2420, k), TF.lerp(w[1] + 6, hY(1.0), k)); } } });
 
   // ================= 7B hands + heads =================
   TF.room({ id: '7B', period: 24, box: L.roomById('7B').box,
@@ -136,7 +138,7 @@
       D.rect(ctx, 2434, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
       D.rect(ctx, 2472, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
       D.rect(ctx, 2430, hY(1.0), 50, 4, '#9aa3ab'); if (lod !== 'far') { const held7C = TF.elonTour && TF.elonTour.holding7C(t); for (let i = 0; i < 2; i++) { if (i === 0 && held7C) continue; IT.tote(ctx, 2445 + i * 22, hY(1.0)); }   // left tote (2445) is drawn by floor9 while Elon holds it
-       if (s >= 10.2 && s < 11.3) IT.tote(ctx, 2420, hY(1.0)); }
+       { const s7 = TF.mod(t, 24); if (s7 >= 10.6 && s7 < 10.9) IT.tote(ctx, 2420, hY(1.0)); } }   // R3-core-f9: only while the 7A feeder Optimus (24 s) has set it down
       D.rect(ctx, STAND - 30, yF - 6, 60, 6, '#7b848c'); D.rect(ctx, STAND - 34, hY(2.2), 6, 2.2 * M, '#9aa3ab'); D.rect(ctx, STAND - 34, hY(2.2), 26, 5, '#9aa3ab');
       K.cabinet(ctx, 2750, yF - 46, 16, 46, t, 75, lod);
     },

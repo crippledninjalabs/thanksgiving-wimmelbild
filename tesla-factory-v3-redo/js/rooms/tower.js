@@ -13,7 +13,7 @@
   // A: 0-6 wait BR, 6-7 take ring, 7-11 down to G, 11-12 ring onto transporter, 12-16 to ENG,
   //    16-22 pull old Raptor, 22-24 up to BR
   // B: 0-6 wait, 6-7 swap, 7-8 down to ENG, 8-13 install, 13-14 up to BR, 14-24 parked
-  const yRingG = G0 - 36 - 1.3 * M;
+  const DECK = 1.1 * M, yRingG = G0 - DECK - 1.3 * M;   // R3-2: transporter deck top 1.1 m
   const csY = (u) => TF.keys(u, [
     [0, yBR], [6, yBR], [7, yBR], [11, yRingG], [12, yRingG], [16, yENG], [22, yENG], [24, yBR],
     [30, yBR], [31, yBR], [32, yENG], [37, yENG], [38, yBR], [48, yBR]
@@ -56,12 +56,12 @@
     hatch: (t) => { const a = crewA(t); return a < 18.5 ? 0 : a < 19.5 ? TF.ramp(a, 18.5, 19.5) : a < 22 ? 1 : a < 23 ? 1 - TF.ramp(a, 22, 23) : 0; }
   };
   // outbound crew (C6; same walk as ship.js's alcove exit): hatch -> arm -> TL car (boards 23.3, rides to G) -> west along the ground. rr = seconds since the crew-up hand-off clock
-  const WEND = 3400,   // walks on through the 1E lawn door (x~3745) and across the cafeteria floor, empty crate in hand, to the 1D/1E west side instead of stopping at the tower box edge (3724)
+  const WEND = 5400,   // R3-core-crewout: walks EAST along the ground in front of the launch mount, empty crate in hand, until fully off the world's east edge (L.W 5300 + 40)
      crewOutSegs = (() => {
     const X0 = SB.x, crateX = X0 + SB.w / 2 + 70, AX0 = X0 + ALC.x0 + ALC.w / 2, cb = { step: 0.62, carry: fcC, carryW: 0.3 };
     return [A.hold(1.0, AX0, 1), A.walk(2.4, AX0, crateX - 12, { step: 0.5 }), A.keyed(1.0, crateX - 12, 1, [[0, A.stand()], [0.5, cBend], [1, cCarry]]),
       A.turn(0.4, crateX - 12, 1, () => cCarry), A.walk(3.2, crateX - 12, X0 - 26, cb), A.walk(2.3, X0 - 26, CARX, cb), A.hold(4.7, CARX, -1, cLook(cCarry)),
-      A.walk(14 * (CARX - WEND) / (CARX - 3800), CARX, WEND, cb)];
+      A.walk(12.5, CARX, WEND, { step: 0.55, carry: fcC, carryW: 0.3 })];   // ~58 px/s = 1.16 m/s
   })(), crewOutEnd = 12 + A.total(crewOutSegs);
   const crewOutAt = (rr, id) => {
     if (rr < 12 || rr >= crewOutEnd) return null;
@@ -149,16 +149,55 @@
       D.rect(ctx, T.x + T.w, armY - 5, armL, 10, '#7b848c', '#2b2f34', 1);
       D.rect(ctx, T.x + T.w, yCG, armL, 5, '#9aa3ab', '#2b2f34', 0.8);   // walkway
       if (lod !== 'far') for (const r of TF.stage3.crewUp.list(t)) if (r.st.x < SB.x) { const f = A.draw(ctx, r.st, r.y); if (r.gag) TF.gag42.held(ctx, t, 'crew', f); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); } }
+
+    } });
+
+  // R3-2: self-propelled heavy transporter (SPMT-style flatbed + driver cab) at yard scale: 7.5 m long, wheels r 0.45 M, deck 1.1 m, cab 2.6 m.
+  // Parked 47.5-19.5 (ring aboard 12-19.5), drives east 19.5-23.5 (~5 m/s avg) until fully past the world edge, returns empty 43.5-47.5. Main layer: in front of the mount, behind the tower-foot walkers (registered before them).
+  const VX0 = T.x + 40, VX_OFF = 5600, VR = 0.45 * M;   // vx = ring-centre x
+  TF.transport({ id: 'Ring-transporter', period: 48, layer: 'main', box: { x: 4300, y: G0 - 140, w: 1500, h: 170 },
+    draw(ctx, t, theme, lod) {
+      const u = s48(t);
+      let vx, hasRing = false;
+      if (u >= 43.5 && u < 47.5) vx = TF.lerp(VX_OFF, VX0, TF.ramp(u, 43.5, 47.5));
+      else if (u >= 47.5 || u < 19.5) { vx = VX0; hasRing = u >= 12 && u < 19.5; }
+      else if (u < 23.5) { vx = TF.lerp(VX0, VX_OFF, TF.ramp(u, 19.5, 23.5)); hasRing = true; }
+      else return;
+      if (vx - 230 >= 5300 + 4) return;   // fully past the world edge
+      const dT = G0 - DECK;
+      D.rect(ctx, vx - 230, dT, 315, 18, '#64748b', '#1e293b', 1);   // flatbed
+      D.rect(ctx, vx - 222, dT + 18, 300, 8, '#334155');              // bogie frame
+      for (let i = 0; i < 7; i++) {                                   // wheel pairs (side view), turn with distance
+        const wx = vx - 205 + 48 * i, a = (vx - VX0) / VR;
+        D.circle(ctx, wx, G0 - VR, VR, '#1f2937', '#0f172a', 1);
+        D.circle(ctx, wx, G0 - VR, VR * 0.45, '#94a3b8', '#334155', 0.8);
+        D.line(ctx, [[wx - Math.cos(a) * VR * 0.8, G0 - VR - Math.sin(a) * VR * 0.8], [wx + Math.cos(a) * VR * 0.8, G0 - VR + Math.sin(a) * VR * 0.8]], '#cbd5e1', 2);
+      }
+      D.rect(ctx, vx + 88, G0 - 2.6 * M, 58, 2.6 * M - DECK + 18, '#475569', '#1e293b', 1);   // driver / control cab, 2.6 m
+      D.rect(ctx, vx + 112, G0 - 2.6 * M + 10, 28, 24, '#bae6fd', '#64748b', 0.8);
+      D.rect(ctx, vx + 84, dT - 12, 10, 12, '#fbbf24', '#92400e', 0.8);   // beacon base on deck edge
+      if (hasRing) {
+        const cy = G0 - DECK - 1.3 * M;
+        D.rect(ctx, vx - 40, dT - 8, 16, 8, '#334155'); D.rect(ctx, vx + 24, dT - 8, 16, 8, '#334155');   // ring cradle blocks
+        ctx.beginPath(); ctx.arc(vx, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.beginPath(); ctx.arc(vx, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
+        if (lod !== 'far') IT.crate(ctx, vx, cy + 8);
+      }
+    } });
+
+  // R3-2: tower-foot walkers, 42-plate gag world and tile fixture drawn AFTER the transporter so they pass in front of it (timings unchanged)
+  TF.transport({ id: 'Tower-foot', period: 48, layer: 'main', box: { x: 3300, y: T.y - 40, w: 5460 - 3300, h: T.h + 80 },   // east edge 5460: owns the ground walk off screen
+    draw(ctx, t, theme, lod) {
+      const ty = tlY(s24(t));
+      TF.gag42.world(ctx, t, lod, ty);
       if (lod !== 'far') {   // outbound crew robot past the hatch plane (ship.js owns x >= SB.x - 2); empty crate stays in hand
         const rr = TF.mod(t - CR0, 24), mm = Math.round((t - CR0 - rr) / 24), cid = (c) => 'crew-out-' + (TF.mod(c, 2) === 1 ? 0 : 1);
-        ctx.save(); ctx.beginPath(); ctx.rect(-1e6, -1e6, 1e6 + SB.x - 2, 2e6); ctx.clip();
         for (const [k, r] of [[0, TF.stage3.crewOut.at(rr, cid(mm - 2))], [1, TF.stage3.crewOut.at(rr + 24, cid(mm - 3))]]) if (r) {
+          ctx.save(); ctx.beginPath(); ctx.rect(-1e6, -1e6, 2e6 + (rr + 24 * k >= 21 ? 0 : SB.x - 2 - 1e6), 2e6); ctx.clip();   // before 21 s ship.js owns x >= hull plane; afterwards the robot is fully on the tower side / ground
           const f = A.draw(ctx, r.st, r.y); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); }
+          ctx.restore();
         }
-        ctx.restore();
       }
-      TF.gag42.world(ctx, t, lod, ty);   // 42 plate: skirt / falling / pile / TL car, mallet, clang
-
       // tile pile at G + fit-check fixture by the booster QD; the tile Optimus carries the top tile there and back
       const tt = s24(t), gz = TF.fortyTwo(t), TV = TILE[gz.k + 1], inHand = tt >= TV.hand[0] && tt < TV.hand[1];
       D.rect(ctx, T.x - 40, G0 - 8, 28, 8, '#f3f4f6', '#6b737b', 0.6);
@@ -172,31 +211,6 @@
         if (inHand) { const w = fig.w(fig.sk.wristN); D.rect(ctx, w[0] - 13, w[1] - 8, 26, 8, '#f3f4f6', '#6b737b', 0.6); }
         TF.gag42.held(ctx, t, 'tile', fig);
       }
-    } });
-
-  // ring transporter at tower base (48 s): gets ring A 11-12, leaves east B 16-20, returns empty A 4-8
-  TF.transport({ id: 'Ring-transporter', period: 48, layer: 'main', box: { x: 4300, y: G0 - 140, w: 1000, h: 160 },
-    draw(ctx, t, theme, lod) {
-      const u = s48(t);
-      // parked 47.5-19.5 (ring aboard 12-19.5), leaves east behind the mount 19.5-23.5, returns empty 43.5-47.5 (clear of the fuel truck, s24 19-24)
-      let tx, hasRing = false;
-      if (u >= 43.5 && u < 47.5) tx = TF.lerp(5400, 4580, TF.ramp(u, 43.5, 47.5));
-      else if (u >= 47.5 || u < 19.5) { tx = 4580; hasRing = u >= 12 && u < 19.5; }
-      else if (u < 23.5) { tx = TF.lerp(4580, 5400, TF.ramp(u, 19.5, 23.5)); hasRing = true; }
-      else return;
-      if (tx > 5350) return;
-      ctx.save(); ctx.beginPath(); ctx.rect(4000, G0 - 300, 720, 350); ctx.rect(5050, G0 - 300, 600, 350); ctx.clip();
-      D.rect(ctx, tx - 80, G0 - 36, 140, 20, '#64748b', '#1e293b', 1);
-      D.rect(ctx, tx + 60, G0 - 50, 40, 34, '#475569', '#1e293b', 1);
-      D.rect(ctx, tx + 68, G0 - 44, 16, 10, '#bae6fd', '#64748b', 0.6);
-      D.circle(ctx, tx - 50, G0 - 8, 8, '#1f2937'); D.circle(ctx, tx + 20, G0 - 8, 8, '#1f2937'); D.circle(ctx, tx + 80, G0 - 8, 8, '#1f2937');
-      if (hasRing) {
-        const cy = G0 - 36 - 1.3 * M;
-        ctx.beginPath(); ctx.arc(tx + 20, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
-        ctx.beginPath(); ctx.arc(tx + 20, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
-        if (lod !== 'far') IT.crate(ctx, tx + 20, cy + 8);
-      }
-      ctx.restore();
     } });
 
   TF.flows.push(

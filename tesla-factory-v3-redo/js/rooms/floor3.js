@@ -20,7 +20,15 @@
       const s = s24(t), ph = t * Math.PI * 10;
       X.upper(ctx, yF, ceil, t, lod, { duct: [3290, 3740, 4.2], fans: [3330, 3700], pipes: [3290, 3480, 3.5], valves: [3360], lamps: [3380, 3650] });
       // powder hopper (refilled when the basket stops), coater head, dryer tunnel, foil unwind + rewind rolls
-      const pw = R.powder.window(0, 0), fill = TF.mod(s - pw[0] - 0.6, 24), lv = TF.clamp(0.9 - 0.7 * fill / 24, 0.15, 0.9);
+      // R3-core-f1238: the basket sets the bags on a shelf (1.0 m); a bag hoist slides them east, lifts them past the head and tips them over the hopper mouth (0.0-2.3 s after the set-down);
+      // the hopper level rises as they go in (hidden behind the hopper's front)
+      const pw = R.powder.window(0, 0), TA = TF.mod(pw[0] + 1.1, 24), hs = TF.mod(s - TA, 24), fill = TF.mod(s - (TA + 2.4), 24);
+      const lv = fill < 0.4 ? 0.2 + 0.7 * TF.ramp(fill, 0, 0.4) : 0.9 - 0.7 * (fill - 0.4) / 23.6;
+      D.rect(ctx, 3548, hY(1.0), 72, 3, '#9aa3ab', '#6d757d', 0.6); for (const x of [3552, 3614]) D.rect(ctx, x, hY(1.0) + 3, 3, 1.0 * M - 3, '#8a939b');
+      D.rect(ctx, 3626, hY(3.1), 4, 3.1 * M, '#8a939b'); D.rect(ctx, 3560, hY(3.1), 70, 3, '#8a939b');   // hoist mast + top rail
+      if (lod !== 'far' && hs < 2.3) for (let j = 0; j < 2; j++) { const ox = (j - 0.5) * 9, e1 = TF.ramp(hs, 0, 0.6), e2 = TF.ramp(hs, 0.6, 1.4), e3 = TF.ramp(hs, 1.4, 1.9), e4 = TF.ramp(hs, 1.9, 2.3);
+        IT.powder(ctx, hs < 0.6 ? TF.lerp(3560 + ox, 3612 + ox, e1) : hs < 1.4 ? 3612 + ox : hs < 1.9 ? TF.lerp(3612 + ox, 3565 + ox, e3) : 3565 + ox,
+          hs < 0.6 ? hY(1.0) + 1 : hs < 1.4 ? TF.lerp(hY(1.0) + 1, hY(2.8), e2) : hs < 1.9 ? hY(2.8) : TF.lerp(hY(2.8), hY(2.6) + 10, e4)); }
       D.poly(ctx, [[3540, hY(2.6)], [3590, hY(2.6)], [3575, hY(1.9)], [3555, hY(1.9)]], '#dfe4e8', '#7b848c', 1);
       D.poly(ctx, [[3545, hY(1.9 + 0.7 * lv)], [3585, hY(1.9 + 0.7 * lv)], [3575, hY(1.9)], [3555, hY(1.9)]], '#c08457');
       D.rect(ctx, 3550, hY(1.9), 30, 0.5 * M, '#5f6b77', '#3f4851', 1);
@@ -61,7 +69,7 @@
     draw() {}, front() {} });
 
   // ================= 3C charging: ONE Optimus (ladder + cell cart, cut jobs #3 + #8) =================
-  const LAD = 2600, OX = LAD + 0.17 * M, BOXP = 2720, CART0 = 2665, CART1 = 2215;
+  const LAD = 2600, OX = LAD + 0.17 * M, BOXP = 2720, HOFF = 0.45 * M + 24, RX0 = 2700, CART0 = RX0 - HOFF, CART1 = 2215, RX1 = CART1 + HOFF, PUSH0 = 15.4;   // HOFF: robot x minus cart x while hands are on the handle (robot east of cart, always facing west)
   const climb = C.climb(0.17, 0.3);
   const onL = (k, ph) => { const p = climb.sample(Math.min(ph, 0.99999)); p.props = {}; return { p, ay: k * 0.6 + p.advanceY }; };
   const ladSeg = (d, fn) => ({ d, f: (u) => { const r = fn(u); return { x: OX, face: -1, pose: r.p, ay: r.ay }; } });
@@ -85,27 +93,27 @@
       ladSeg(1.0, (u) => { const top = onL(1, 1), p = JSON.parse(JSON.stringify(top.p)); p.handN = [0.22, 1.25 + 0.05 * Math.sin(u * 6)]; p.gripN = u < 0.5 ? 1 : 0; return { p, ay: top.ay }; })];
     if (!gag) segs.push(ladSeg(4.8, (u) => { const q = 2 - u * 2, k = Math.min(1, Math.floor(q)); return onL(k, q - k); }),                 // 8.4 .. 13.2 down
       ladSeg(0.4, (u) => ({ p: RG.blend(onL(0, 0).p, A.stand(), u), ay: 0 })),
-      A.walk(0.5, OX, CART0 + 18, { step: 0.4 }));
+      A.walk(0.5, OX, RX0, { step: 0.4 }));
     else segs.push(ladSeg(1.2, (u) => { const top = onL(1, 1); return { p: rc([0.17, 1.25], [0.17, 1.12], 0.02, { gripN: 1, gripF: 1 }), ay: top.ay * (1 - Math.pow(u, 1.6)) }; }),   // 8.4 .. 9.6 slide down the rails
       A.turn(0.2, FX, -1),                                                                                    // 9.6 .. 9.8 face the shelf
       A.keyed(3.4, FX, 1, FW.map(([w, p]) => [(w - 0.2) / 3.4, p])),                                          // 9.8 .. 13.2 feast
-      A.walk(0.9, FX, CART0 + 18, { step: 0.4 }));                                                            // 13.2 .. 14.1 (normal walk ends 14.1)
-    segs.push(A.keyed(1.0, CART0 + 18, 1, [[0, A.stand()], [0.5, A.reach([0.3, 0.55], null, { lean: 0.45, hipY: 0.8, gripN: 0.9 })], [1, A.stand()]]),   // charged cells into the cart
-      A.turn(0.3, CART0 + 18, 1),
-      ((w) => ({ d: w.d, f: (u, tl) => { const st = w.f(u, tl); st.pose = push(st.pose); return st; } }))(A.walk(3.6, CART0 + 18, CART1 + 25, { step: 0.55 })),   // push the cart through D3CB
-      A.keyed(1.0, CART1 + 25, -1, [[0, push(A.stand())], [0.5, A.reach([0.4, 0.7], null, { lean: 0.35, gripN: 0.9 })], [1, A.stand()]]),          // unload into the pack builder
-      A.turn(0.3, CART1 + 25, -1));
-    segs.push(((w) => ({ d: w.d, f: (u, tl) => { const st = w.f(u, tl); st.pose = push(st.pose); return st; } }))(A.walk(24 - A.total(segs) - 0.3, CART1 + 25, 2700, { step: 0.6 })));
+      A.walk(0.9, FX, RX0, { step: 0.4 }));                                                            // 13.2 .. 14.1 (normal walk ends 14.1)
+    segs.push(A.keyed(1.0, RX0, -1, [[0, A.stand()], [0.5, A.reach([0.8, 0.55], null, { lean: 0.45, hipY: 0.8, gripN: 0.9 })], [1, A.stand()]]),   // charged cells into the cart
+      A.hold(0.3, RX0, -1, () => A.stand()),
+      ((w) => ({ d: w.d, f: (u, tl) => { const st = w.f(u, tl); st.pose = push(st.pose); return st; } }))(A.walk(3.6, RX0, RX1, { step: 0.55 })),   // push the cart through D3CB
+      A.keyed(1.0, RX1, -1, [[0, push(A.stand())], [0.5, A.reach([0.85, 0.7], null, { lean: 0.35, gripN: 0.9 })], [1, A.stand()]]),          // unload into the pack builder
+      A.hold(0.3, RX1, -1, () => push(A.stand())));
+    segs.push(((w) => ({ d: w.d, f: (u, tl) => { const st = w.f(1 - u, w.d * (1 - u)); st.pose = push(st.pose); return st; } }))(A.walk(24 - A.total(segs) - 0.3, RX0, RX1, { step: 0.6 })));   // pull the cart back east: west-walk played in reverse, still facing the handle
     segs.push(A.turn(0.3, 2700, -1));
     return segs; };
   const SEGS = [mkOpt(false), mkOpt(true)];
   // variant chosen per 24 s robot cycle (gag active when this cycle's feast window starts) so it never switches mid-cycle
   const feastCycle = (t) => TF.gagActive(feast, t - s24(t) + WIN0);
   const opt3 = (t) => { const st = A.run(SEGS[feastCycle(t) ? 1 : 0], s24(t)); st.ay = st.ay || 0; return st; };
-  // Robot-feast gag (P 89, one cycle, offset 8 so the whole 9.6-13.2 s window of robot cycle 0 lies inside it): wall shelf east of the ladder
+  // Robot-feast gag (P 48 (R3-retime), one cycle, offset 8 so the whole 9.6-13.2 s window of robot cycle 0 lies inside it): wall shelf east of the ladder
   // (snack crate, oil can, hot-plate + pan, all within arm reach of opt3 standing at the ladder foot facing east). The robot cooks and eats;
   // nothing moves by itself. Outside the gag: crate closed, pan empty, plate cold.
-  const feast = TF.gagHook({ id: 'feast', P: 89, offset: 8, cycles: 1, room: '3C', trigger: 'the charge Optimus slides down the ladder, tips bolts + AA batteries + oil into a pan on a hot-plate, eats it in 3 bites, pats its tummy and shuts the crate' });
+  const feast = TF.gagHook({ id: 'feast', P: 48, offset: 8, cycles: 1, room: '3C', trigger: 'the charge Optimus slides down the ladder, tips bolts + AA batteries + oil into a pan on a hot-plate, eats it in 3 bites, pats its tummy and shuts the crate' });
   const SH = hY(1.0), PAN = [2654, SH - 9], CAN = [2620.5, SH - 5], CRATE = [2633, SH - 6];
   const feastDraw = (ctx, t, theme, lod) => {
     const on = feastCycle(t), w = on ? s24(t) - WIN0 : -1, inW = w >= 0 && w <= 3.6, W = inW ? w : -1;
@@ -145,7 +153,27 @@
       if (W >= a + 0.05 && W < a + 0.3) D.circle(ctx, hN[0], hN[1] - 1, 1.6, '#6b7280');
       if (W >= a + 0.3 && W < a + 0.55) for (const d of [-1, 0, 1]) D.line(ctx, [[hN[0] + 4, hN[1] - 8 + d * 4], [hN[0] + 9, hN[1] - 8 + d * 6]], '#374151', 0.8); }
   };
-  const cartX = (t) => { const s = s24(t); return TF.keys(s, [[15.9, CART0], [19.5, CART1], [20.8, CART1], [23.7, CART0]]); };
+  const cartX = (t) => { const s = s24(t); return s < PUSH0 ? CART0 : Math.min(CART0, Math.max(CART1, opt3(t).x - HOFF)); };   // cart follows the robot's hands (push west, pull east); parked otherwise
+  // top charge rack = box slot conveyor: 8 slots, one-slot shift (east -> west) during s 23..24; box placed at 7.9; drone takes the west-end box at 17.5
+  const SLX = (i) => 2355 + 33 * i, RY = hY(2.4), DRX = SLX(0), DYD = RY - 38, DYU = ceil - 48;
+  const crate = (ctx, x, y) => D.rect(ctx, x - 8, y - 10, 16, 10, '#c99b5f', '#7d5a2c', 0.6);
+  const rackBoxes = (ctx, s, lod) => {
+    const sh = TF.ramp(s, 23, 24), ph = 33 * sh;
+    D.rect(ctx, 2580, RY, 14, 3, '#8a939b');
+    if (lod !== 'far') for (let i = 0; i < 8; i++) { const x = SLX(i) + 16 - ph; if (x > 2340 && x < 2594) { D.circle(ctx, x, RY + 7, 3, '#6d757d', '#4a5056', 0.6); D.line(ctx, [[x, RY + 7], [x + Math.cos(ph / 3) * 2.5, RY + 7 + Math.sin(ph / 3) * 2.5]], '#e5e7eb', 0.8); } }
+    if (lod !== 'far') D.line(ctx, [[2340, RY + 11], [2594, RY + 11]], '#59626b', 1, [3, 3]);
+    for (let i = 0; i < 8; i++) { if (i === 7 ? s < 7.9 : (i === 0 && s >= 17.5)) continue; crate(ctx, SLX(i) - (i > 0 ? ph : 0), RY); }
+  };
+  const droneDraw = (ctx, s, lod) => {
+    const open = TF.ramp(s, 13, 14) - TF.ramp(s, 20.5, 21.5), lw = 30 * (1 - open);
+    D.rect(ctx, DRX - 30, ceil - 2, lw, 5, '#8a939b', '#4a5056', 0.6); D.rect(ctx, DRX + 30 - lw, ceil - 2, lw, 5, '#8a939b', '#4a5056', 0.6);   // ceiling hatch doors
+    if (s < 14 || s > 20.5) return;
+    const ez = (a, b) => { const k = TF.ramp(s, a, b); return k * k * (3 - 2 * k); };
+    const y = s < 17.5 ? TF.lerp(DYU, DYD, ez(14, 17)) : TF.lerp(DYD, DYU, ez(17.5, 20.5));
+    ctx.save(); ctx.beginPath(); ctx.rect(DRX - 60, ceil, 120, 600); ctx.clip();                  // flies up through the hatch and is hidden by the ceiling slab
+    TF.basket.draw(ctx, DRX, y, 0, lod, s >= 17.5 ? (c, x, b) => crate(c, x, b) : null);
+    ctx.restore();
+  };
   TF.room({ id: '3C', period: 24, box: L.roomById('3C').box,
     ports: { D3CD: 'in', D3BC: 'out', F3R: 'pass' },
     actors: ['3C.chargeOptimus', '3C.racks', 'peek.shiba3C'],
@@ -158,21 +186,23 @@
       X.belt(ctx, 2700, 2790, yF, 1.0, -t * 24, lod); cellsOnBelt(ctx, 2700, 2790, t, lod);
       // charge racks: 4 levels x 8 slots, the charge lights fill level by level over the 24 s loop
       for (let lv = 0; lv < 4; lv++) { const y = hY(0.6 + lv * 0.6); D.rect(ctx, 2340, y, 240, 3, '#8a939b');
-        if (lod !== 'far') for (let i = 0; i < 8; i++) cell(ctx, 2355 + i * 29, y, TF.mod(s / 24 + lv * 0.25 + i / 32, 1) > 0.5); }
+        if (lod !== 'far' && lv < 3) for (let i = 0; i < 8; i++) cell(ctx, 2355 + i * 29, y, TF.mod(s / 24 + lv * 0.25 + i / 32, 1) > 0.5); }
       for (const x of [2340, 2577]) D.rect(ctx, x, hY(2.4), 3, 2.4 * M, '#8a939b');
+      rackBoxes(ctx, s, lod);
       K.ladder(ctx, LAD, yF, 2.4);
       K.cabinet(ctx, 2740, yF - 46, 18, 46, t, 45, lod);
       feastDraw(ctx, t, theme, lod);
+      droneDraw(ctx, s, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       const s = s24(t), cx = cartX(t);
-      D.rect(ctx, cx - 22, hY(0.5), 44, 6, '#5b8fc9', '#2d4f75', 0.8); D.line(ctx, [[cx + 22, hY(0.45)], [cx + 26, hY(1.0)]], '#4a5560', 1.5);
+      D.rect(ctx, cx - 22, hY(0.5), 44, 6, '#5b8fc9', '#2d4f75', 0.8); D.line(ctx, [[cx + 22, hY(0.45)], [cx + 24, hY(1.0)]], '#4a5560', 1.5);
       for (const w of [cx - 15, cx + 15]) D.circle(ctx, w, yF - 4, 4, '#2a2c2f');
-      if (lod !== 'far' && s >= 15.0 && s < 20.3) for (let i = 0; i < 6; i++) cell(ctx, cx - 15 + i * 6, hY(0.5), true);
+      if (lod !== 'far' && s >= 14.6 && s < 19.5) for (let i = 0; i < 6; i++) cell(ctx, cx - 15 + i * 6, hY(0.5), true);
       if (lod === 'far') return;
       const st = opt3(t), fig = A.draw(ctx, st, yF - st.ay * M);
-      if (s < 7.9 && s >= 0.5) { const w = fig.w(fig.sk.wristN); D.rect(ctx, w[0] - 8, w[1] - 2, 16, 10, '#c99b5f', '#7d5a2c', 0.6); }
+      if (s < 7.9 && s >= 0.5) { const w = fig.w(fig.sk.wristN), k = TF.ramp(s, 7.4, 7.9); crate(ctx, TF.lerp(w[0], SLX(7), k), TF.lerp(w[1] + 8, RY, k)); }   // hand -> top rack slot 7
     } });
 
   // ================= 3B pack builder -> PB (car + Semi packs) and F3R basket (Optimus packs) =================
@@ -192,8 +222,9 @@
       D.rect(ctx, 2028, hY(0.9) + 5, 4, yF - (hY(0.9) + 5), '#6d757d');
       D.rect(ctx, 1900, hY(0.9), 140, 5, '#9aa3ab', '#6d757d', 0.8);
       for (const k in TF.PB.trips) { const p = TF.PB.trips[k], u = TF.mod(s - p.tb + 3.2, 24);
-        if (u < 3.2) { const x = u < 2.7 ? TF.lerp(2010, 1905, TF.ramp(u, 0.2, 2.6)) : TF.lerp(1905, TF.PB.XU + (p.down ? 30 : 0), TF.ramp(u, 2.7, 3.2));
-          D.rect(ctx, x - 26, hY(0.9) - (p.big ? 9 : 6), 52, p.big ? 9 : 6, '#2a2e33', '#111', 0.6); } }
+        if (u < 3.2) { const x = u < 2.7 ? TF.lerp(2010, 1905, TF.ramp(u, 0.2, 2.6)) : TF.lerp(1905, TF.PB.XU + (p.down ? 30 : 0), TF.ramp(u, 2.7, 3.2)), w = TF.PB.w(p), th = TF.PB.th(p);
+          const yy = u < 2.7 ? hY(0.9) - th : TF.lerp(hY(0.9) - th, yF - TF.PB.rise() - th, TF.ramp(u, 2.7, 3.2));
+          D.rect(ctx, x - w / 2, yy, w, th, '#2a2e33', '#111', 0.6); } }
       X.press(ctx, 2010, yF, 0.8, 1.7, TF.pulse(TF.mod(t, 4.8), 0.4, 1.6, 0.3), lod);
       K.cabinet(ctx, 2270, yF - 46, 18, 46, t, 47, lod);
     },
@@ -211,6 +242,29 @@
 
   // ================= 3A wheel shop: ONE ledge Optimus loads the totes (cut job #12) =================
   const LEDGE = [1470, 1600, 2.4], OL = 1535;
+  // R3-10 tyre station (24 s): hook hoist rack -> belt (press pulse) -> balancer -> tote lift -> ledge Optimus -> staging table -> F3R basket.
+  // v = s24 - S0 (S0 = basket tyres landed on the rack table). Hook: 4 refill steps (1.2 s) then 4 picks (4.8 s); tyre n reaches the lift at PH + 4.8 n.
+  const RT = IT.R_TIRE, HB = 4.8, RAIL = ceil + 14, YTOP = RAIL + 22;
+  const S0 = TF.mod(R.tires.window(0, 0)[0] + 1.1, 24), PH = TF.mod(S0 + HB + 9.6, 24);
+  const QX = 1395, QY = hY(1.0) + 1, QOFF = [-9, 0, 9, 18];
+  const RXC = [0, 1].map((c) => 1328 + 19.5 + c * (1.72 * M - 12) * 47 / 74);
+  const SLOT = [[RXC[0], hY(0.8) + 2], [RXC[0], hY(1.6) + 2], [RXC[0], hY(2.4) + 2], [RXC[1], hY(2.4) + 2]];   // refill order; picks go top first
+  const DROPX = 1440, BEND = 1640, BV = 50, BAL = [1670, hY(1.25)], PLX = 1612, BELTC = hY(0.7) - RT, PLAT = yF - 2;
+  const STG = [0, 1, 2, 3].map((j) => 1500 + (j - 1.5) * RT * 1.1), hkY = (bottom) => bottom - 2 * RT - 3;
+  const kf = (v, ks) => { for (let i = 1; i < ks.length; i++) if (v <= ks[i][0]) { const a = ks[i - 1], b = ks[i], e = TF.ramp(v, a[0], b[0]); return [TF.lerp(a[1], b[1], e), TF.lerp(a[2], b[2], e)]; } const l = ks[ks.length - 1]; return [l[1], l[2]]; };
+  const hoist = (v) => {
+    if (v < 4.8) { const r = Math.floor(v / 1.2), w = v - 1.2 * r, qx = QX + QOFF[r], sl = SLOT[r], nx = r < 3 ? QX + QOFF[r + 1] : RXC[1];
+      return { p: kf(w, [[0, qx, YTOP], [0.3, qx, hkY(QY)], [0.6, qx, YTOP], [1.0, sl[0], hkY(sl[1])], [1.2, nx, YTOP]]), held: w > 0.3 && w < 1.0 }; }
+    const w0 = v - 4.8, n = Math.min(3, Math.floor(w0 / HB)), w = w0 - HB * n, sl = SLOT[3 - n], nx = n < 3 ? SLOT[2 - n][0] : QX + QOFF[0];
+    return { p: kf(w, [[0, sl[0], YTOP], [0.9, sl[0], hkY(sl[1])], [1.8, sl[0], YTOP], [3.0, DROPX, YTOP], [3.4, DROPX, hkY(hY(0.7))], [4.8, nx, YTOP]]), held: w > 0.9 && w < 3.4 };
+  };
+  const ledgeY = hY(LEDGE[2] + 0.05);
+  const liftAt = (so) => { let ly = yF + 10, tote = 0;   // tote: 1 empty on the platform, 2 loaded (tyre in it)
+    for (let k = 0; k < 4; k++) { const d = TF.mod(so - HB * k + 0.9, 24) - 0.9;
+      if (d < -0.5) { ly = TF.lerp(yF + 10, PLAT, TF.ramp(d, -0.9, -0.5)); tote = 1; } else if (d < 0) { ly = PLAT; tote = 1; }
+      else if (d < 0.6) { ly = TF.lerp(PLAT, ledgeY, TF.ramp(d, 0, 0.6)); tote = 2; } else if (d < 1.2) ly = ledgeY;
+      else if (d < 3.7) ly = TF.lerp(ledgeY, yF + 10, TF.ramp(d, 1.2, 3.7)); }
+    return { ly, tote }; };
   const opt3a = (() => {
     const tote = A.reach([0.32, 1.0], [0.18, 1.02], { gripN: 0.9, gripF: 0.9 });
     const segs = [];
@@ -220,7 +274,8 @@
       A.turn(0.3, OL, 1, () => tote), A.keyed(1.6, OL, -1, [[0, tote], [0.6, A.reach([0.3, 1.45], [0.15, 1.4], { gripN: 0.9, gripF: 0.9, head: -0.25 })], [1, A.stand()]]),   // into the basket / staging
       A.turn(0.3, OL, -1));
     segs.push(A.hold(24 - A.total(segs), OL, 1, (tl) => A.reach([0.3 + 0.05 * Math.sin(tl * 3), 0.9], null, { head: 0.3, gripN: 0.4 })));
-    return (t) => A.run(segs, s24(t)); })();
+    return (t) => A.run(segs, TF.mod(s24(t) - PH, 24)); })();
+  const wrist42 = () => [OL - 0.3 * M, hY(LEDGE[2]) - 1 - 1.45 * M];   // wrist position at u = 4.2 (no dummy A.draw)
   TF.room({ id: '3A', period: 24, box: L.roomById('3A').box,
     ports: { D3AB: 'out', F3R: 'both', 'W3-3': 'both', 'PT-3': 'pass', 'SS-3': 'spare' },
     actors: ['3A.tirePress', '3A.balancer', '3A.ledgeOptimus'],
@@ -230,21 +285,36 @@
     back(ctx, t, theme, lod) {
       const s = s24(t);
       X.upper(ctx, yF, ceil, t, lod, { duct: [1620, 1810, 4.0], fans: [1760], tray: [1620, 1810, 3.4], lamps: [1700] });
-      X.rack(ctx, 1328, yF, 1.72, 2.4, 3, 4, (c, x, y) => IT.tire(c, 1328 + 19.5 + (x - 1334) * 47 / 74, y), lod);   // car-size tyres, 2 per shelf
-      X.press(ctx, 1440, yF, 0.7, 2.0, TF.pulse(TF.mod(t, 6), 0.5, 2.0, 0.4), lod);
-      X.belt(ctx, 1460, 1640, yF, 0.7, t * 20, lod);
-      if (lod !== 'far') { ctx.save(); ctx.beginPath(); ctx.rect(1452, hY(1.8), 203, 1.8 * M); ctx.clip();
-        for (let x = 1435 + TF.mod(t * 30, 60); x < 1675; x += 60) IT.tireAt(ctx, x, hY(0.7) - IT.R_TIRE, IT.R_TIRE);
-        ctx.restore(); }
-      // balancer (spinning wheel) + tote lift synced to opt3a (4 picks per 24s, u in 0..4.8)
+      X.rack(ctx, 1328, yF, 1.72, 2.4, 3, 0, () => {}, lod);   // R3-10: tyres below are tracked individually
+      const v = TF.mod(s - S0, 24), so = TF.mod(s - PH, 24), tys = [];   // tys: tyres on the belt / balancer / roll-in: [x, y, ang]
+      let pk = 0;
+      for (let n = 0; n < 4; n++) { const u = TF.mod(s - (S0 + HB + HB * n), 24); pk = Math.max(pk, TF.pulse(u, 3.45, 4.05, 0.25));
+        if (u < 3.4 || u >= 9.6) continue;
+        if (u < 7.4) { const x = DROPX + BV * (u - 3.4); tys.push([x, BELTC, (x - DROPX) / RT]); }
+        else if (u < 7.9) { const e = TF.ramp(u, 7.4, 7.9); tys.push([TF.lerp(BEND, BAL[0], e), TF.lerp(BELTC, BAL[1], e), (BEND - DROPX) / RT]); }
+        else if (u < 9.1) tys.push([BAL[0], BAL[1], (BAL[0] - DROPX) / RT + 14 * (u - 7.9)]);
+        else { const e = TF.ramp(u, 9.1, 9.6); tys.push([TF.lerp(BAL[0], PLX, e), TF.lerp(BAL[1], PLAT - 12 - RT, e), (BAL[0] - DROPX) / RT + 14 * 1.2 - (BAL[0] - TF.lerp(BAL[0], PLX, e)) / RT]); } }
+      X.press(ctx, 1440, yF, 0.7, 2.0, pk, lod);
+      X.belt(ctx, 1424, BEND, yF, 0.7, t * BV, lod);
+      if (lod !== 'far') {
+        D.rect(ctx, 1374, QY, 44, 3, '#aab2ba'); D.rect(ctx, 1452, QY, 100, 3, '#aab2ba');   // rack landing table; wheel staging table
+        for (const x of [1456, 1546]) D.rect(ctx, x, QY + 3, 4, yF - QY - 3, '#9aa3ab');
+        for (let r = 0; r < 4; r++) if (v >= 1.2 * r + 1.0 && v < 4.8 + HB * (3 - r) + 0.9) IT.tire(ctx, SLOT[r][0], SLOT[r][1]);   // rack slots: refilled, then picked top-first
+        for (let r = 0; r < 4; r++) if (v < 1.2 * r + 0.3) IT.tire(ctx, QX + QOFF[r], QY);                                         // landed basket tyres waiting for the hook
+        if (v > 22.9) { const b = R.tires.at(t, 0), e = TF.ramp(v - 24, -0.5, 0); IT.tire(ctx, QX + QOFF[3], TF.lerp(b.y + b.drop + 1, QY, e)); }   // 4th tyre leaves the basket gripper
+        const h = hoist(v), hx = h.p[0], hy = h.p[1];
+        D.rect(ctx, 1330, RAIL - 3, 128, 5, '#6b737b'); D.rect(ctx, hx - 7, RAIL - 5, 14, 9, '#3d4650'); D.line(ctx, [[hx, RAIL + 4], [hx, hy]], '#4a5056', 1.5); D.circle(ctx, hx, hy, 2.5, '#3d4650');
+        if (h.held) IT.tire(ctx, hx, hy + 3 + 2 * RT);
+        for (const q of tys) IT.tireAt(ctx, q[0], q[1], RT, { ang: q[2] });
+      }
+      // balancer stand + tote lift synced to opt3a (4 picks per 24 s from PH; s_o = s24 - PH)
       D.rect(ctx, 1655, hY(1.0), 30, 1.0 * M, '#d5dade', '#7b848c', 1);
-      const a = t * Math.PI * 6; IT.tireAt(ctx, 1670, hY(1.25), 0.37 * M, { ang: a });
-      const lu = TF.mod(s, 4.8), active = s < 19.2, lFrac = active ? (lu < 0.6 ? TF.ramp(lu, 0, 0.6) : lu < 1.2 ? 1 : 1 - TF.ramp(lu, 1.2, 4.2)) : 0;
-      const ly = TF.lerp(yF + 10, hY(LEDGE[2] + 0.05), lFrac);
+      const L8 = liftAt(so), ly = L8.ly;
       D.line(ctx, [[1612, yF], [1612, hY(LEDGE[2] + 0.4)]], '#8a939b', 3);
       ctx.save(); ctx.beginPath(); ctx.rect(1570, ceil, 90, yF - ceil); ctx.clip();
-      D.rect(ctx, 1600, ly - 4, 24, 4, '#7b848c'); if (active && lu < 0.6) IT.wtote(ctx, 1612, ly - 4);
+      D.rect(ctx, 1600, ly - 4, 24, 4, '#7b848c'); if (L8.tote) IT.wtote(ctx, 1612, ly - 4); if (L8.tote === 2) IT.tire(ctx, 1612, ly - 12);
       ctx.restore();
+      if (lod !== 'far') { const hold = TF.mod(R.wheels.dep - 0.5 - PH, 24); for (let j = 0; j < 4; j++) if (so >= HB * j + 4.7 && so < hold) IT.wheels(ctx, STG[j], QY); }   // staged wheel totes until the basket lifts them
       // ledge
       D.rect(ctx, LEDGE[0], hY(LEDGE[2]), LEDGE[1] - LEDGE[0], 6, '#f2c230', '#9c7a12', 1);
       for (const x of [LEDGE[0] + 4, LEDGE[1] - 8]) D.rect(ctx, x, hY(LEDGE[2]) + 6, 4, LEDGE[2] * M - 6, '#9aa3ab');
@@ -254,8 +324,10 @@
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
-      const st = opt3a(t), fig = A.draw(ctx, st, hY(LEDGE[2]) - 1), u = TF.mod(s24(t), 4.8);
-      if (u >= 0.6 && u < 4.2 && s24(t) < 19.2) { const w = fig.w(fig.sk.wristN); IT.wtote(ctx, w[0], w[1] + 6); }
+      const st = opt3a(t), fig = A.draw(ctx, st, hY(LEDGE[2]) - 1), so = TF.mod(s24(t) - PH, 24), u = TF.mod(so, HB);
+      if (u >= 0.6 && u < 4.2 && so < 19.2) { const w = fig.w(fig.sk.wristN); IT.wtote(ctx, w[0], w[1] + 6); IT.tire(ctx, w[0], w[1] - 2); }
+      else if (u >= 4.2 && u < 4.7 && so < 19.2) { const w = wrist42(), e = TF.ramp(u, 4.2, 4.7), y = TF.lerp(w[1] + 6, QY, e);   // tote + wheel drops to the staging table
+        IT.wtote(ctx, TF.lerp(w[0], STG[Math.floor(so / HB)], e), y); IT.tire(ctx, TF.lerp(w[0], STG[Math.floor(so / HB)], e), y - 8); }
     } });
 
   TF.peek({ id: 'shiba3C', owner: '3C', kind: 'shiba', P: 109, offset: 33, dur: 5, x: 2483, y: hY(3.92) - 7, face: -1 });

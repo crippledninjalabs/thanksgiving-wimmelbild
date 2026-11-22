@@ -17,7 +17,7 @@
   const ct = (TF.line2ct = TF.chain({ id: 'F2-CT', period: 24, t0: 0, life: 99.9, keys: KEYS, lift: [[98.9, 0], [99.9, 300]],
     extra: (a) => { const placed = (a >= 27) + (a >= 30) + (a >= 33) + (a >= 36);
       return { floor: a >= 1.5, stack: Math.max(0, (a >= 5) + (a >= 9) + (a >= 13) + (a >= 17) - placed), front: a >= 27, side: a >= 30, bed: a >= 33, roof: a >= 36,
-        beads: TF.lin(a, 37, 43), glass: a >= 51 && !(a >= 57.6 && a < 63.1), crack: a >= 55.3 && a < 57.6, wheels: a >= 82, pack: a >= 88.8, lit: a >= 96,
+        beads: TF.lin(a, 37, 43), glass: a >= 51 && !(a >= 57.0 && a < 63.1), crack: a >= 55.3 && a < 57.0, /* R3-core-f1238: cracked pane leaves the window the frame it is in the hand (s 9.0) */ wheels: a >= 82.2 - 1e-6, pack: a >= 88.8, lit: a >= 96,
         wheelAng: a > 82 ? -(TF.keys(a, KEYS) - ST.B) / (0.44 * M) : 0 }; } }));
   // ---------- Semi chain (built on the table; t0 7.6) ----------
   const semi = (TF.line2semi = TF.chain({ id: 'F2-Semi', period: 24, t0: 7.6, life: 16.6, keys: [[0, ST.T], [14.0, ST.T], [16.6, ST.T - 650]], lift: [[12.5, 0], [13.5, 300]],
@@ -136,7 +136,17 @@
     back(ctx, t, theme, lod) {
       rollers(ctx, 2320, 2790, t, lod);
       X.upper(ctx, yF, ceil, t, lod, { duct: [2330, 2600, 4.1], fans: [2380], pipes: [2330, 2600, 3.5], valves: [2450], lamps: [2420, 2680] });
-      X.rack(ctx, RACK - 10, yF, 0.5, 1.2, 2, 2, (c, x, y) => IT.pane(c, x + 4, y), lod);
+      // R3-core-f1238: the basket's pane lands on its ledge (rest height 1.0 m), slides onto the lower rack shelf and waits for the cook's 1st install;
+      // the 2nd install pane drops out of the hopper mouth above the rack onto the upper shelf
+      const gk = TF.mod(R.glass.window(0, 3)[0] + 1.1, 24), sb = s24(t), RX = RACK, shL = [RX, yF - 28], shU = [RX, yF - 58];
+      D.rect(ctx, 2733, hY(1.0), 24, 3, '#9aa3ab', '#6d757d', 0.6);
+      if (lod !== 'far') {
+        if (sb >= gk && sb < gk + 0.5) { const e = TF.ramp(sb, gk, gk + 0.5); IT.pane(ctx, TF.lerp(2745, shL[0], e), TF.lerp(hY(1.0) + 1, shL[1], e)); }
+        if (sb >= gk + 0.5 || sb < 0.2) IT.pane(ctx, shL[0], shL[1]);
+        if (sb >= 11.0 && sb < 11.7) IT.pane(ctx, shU[0], TF.lerp(shU[1] - 26, shU[1], TF.ramp(sb, 11.0, 11.7))); else if (sb >= 11.7 && sb < 12.0) IT.pane(ctx, shU[0], shU[1]);
+      }
+      D.rect(ctx, 2752, hY(2.2), 30, 38, '#dfe4e8', '#7b848c', 1); D.rect(ctx, 2756, yF - 72, 22, 3, '#7b848c');   // pane hopper over the rack (mouth on its underside)
+      X.rack(ctx, RACK - 10, yF, 0.5, 1.2, 2, 0, null, lod);
       D.rect(ctx, 2755, hY(0.35), 22, 0.35 * M, '#6b7280', '#374151', 0.8);
       D.rect(ctx, BUCKET - 8, hY(0.3), 16, 0.3 * M, '#9aa3ab', '#5d656d', 0.8);
       K.cabinet(ctx, 2330, yF - 48, 20, 48, t, 55, lod);
@@ -145,13 +155,19 @@
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
       const s = s24(t), st = opt2c(t), fig = A.draw(ctx, st, yF), w = fig.w(fig.sk.wristN);
-      if ((s >= 0.3 && s < 3.0) || (s >= 9.0 && s < 11.6) || (s >= 12.3 && s < 15.1)) IT.pane(ctx, w[0], w[1] + 8);
+      const RX = RACK, hp = [w[0], w[1] + 8];
+      if ((s >= 0.5 && s < 3.0) || (s >= 9.0 && s < 12.12) || (s >= 12.4 && s < 15.1)) IT.pane(ctx, hp[0], hp[1]);
+      if (s >= 0.2 && s < 0.5) { const e = TF.ramp(s, 0.2, 0.5); IT.pane(ctx, TF.lerp(RX, hp[0], e), TF.lerp(yF - 28, hp[1], e)); }          // 1st pane: lower shelf -> hand
+      if (s >= 12.0 && s < 12.4) { const e = TF.ramp(s, 12.0, 12.4); IT.pane(ctx, TF.lerp(RX, hp[0], e), TF.lerp(yF - 58, hp[1], e)); }      // 2nd pane: upper shelf -> hand
+      if (s >= 12.12 && s < 12.4) { const e = TF.ramp(s, 12.12, 12.4); ctx.save(); ctx.beginPath(); ctx.rect(2700, hY(3), 120, hY(0.35) - hY(3)); ctx.clip();   // cracked pane sinks into the scrap tote
+        IT.pane(ctx, TF.lerp(hp[0], 2766, e), TF.lerp(hp[1], hY(0.35) + 14, e)); ctx.restore(); }
       const b = ball(s); if (b) D.circle(ctx, b[0], b[1], 3, '#6b737b', '#2b2f34', 0.6);
       if (s >= 5.6 && s < 7.0) D.circle(ctx, w[0], w[1], 3, '#6b737b', '#2b2f34', 0.6);
     } });
 
   // ================= 2B pack + wheels =================
   const pbCT = TF.PB.trip('2B-ct'), pbS = TF.PB.trip('2B-semi');
+  const WS = TF.wheelStand({ k: 2, xd: 2060, x: 2262, yF, rs: [0.44 * M, 0.44 * M], picks: [6.5, 8.7] });
   TF.room({ id: '2B', period: 24, box: L.roomById('2B').box,
     ports: { D2BC: 'in', D2AB: 'out', PB: 'in', F2R: 'both' },
     actors: ['2B.liftTable', '2B.wheelArm', '2B.packRoller'],
@@ -169,19 +185,21 @@
       D.rect(ctx, 1884, hY(0.45) + 4, 4, yF - (hY(0.45) + 4), '#6d757d');
       D.rect(ctx, 1932, hY(0.45) + 4, 4, yF - (hY(0.45) + 4), '#6d757d');
       D.rect(ctx, 1880, hY(0.45), 60, 4, '#7b848c');
-      const us = TF.mod(s - pbS.te, 24); if (us < TF.mod(12.0 - pbS.te, 24)) D.rect(ctx, 1882, hY(0.45) - 10, 56, 10, '#2a2e33', '#111', 0.6);
-      D.rect(ctx, 2262 - 0.44 * M - 2, hY(0.6), 0.44 * M + 14, 0.6 * M, '#2f6fb0', '#1d4570', 1); if (lod !== 'far') IT.wheels(ctx, 2262, hY(0.6), 0.44 * M);
+      const us = TF.mod(s - pbS.te, 24); if (us < TF.mod(12.0 - pbS.te, 24)) { const q = TF.ramp(us, 0.1, 1.0); D.rect(ctx, TF.lerp(TF.PB.XD, 1910, q) - 28, TF.lerp(yF - TF.PB.rise() - 10, hY(0.45) - 10, q) - 0, 56, 10, '#2a2e33', '#111', 0.6); }
+      WS.fixture(ctx); WS.draw(ctx, t, lod);   // R3-core-wheels: tote follows the basket + the arm's picks
       K.cabinet(ctx, 2280, yF - 46, 18, 46, t, 57, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
-      const s = s24(t), car = ct.inWindow(t, 72, 95), cx = car ? car.x : ST.B, pick = [2262, hY(0.8)], home = [2230, hY(1.1)];
+      const s = s24(t), car = ct.inWindow(t, 72, 95), cx = car ? car.x : ST.B, pk1 = WS.pick(0), pk2 = WS.pick(1), home = [2230, hY(1.1)];
       const hub = (ax) => [cx + ax * M, hY(0.44)], go = (a, b, k) => [TF.lerp(a[0], b[0], k), TF.lerp(a[1], b[1], k)];
       let p = home, carry = false;
-      if (s >= 6 && s < 8.2) { p = s < 6.5 ? go(home, pick, TF.ramp(s, 6, 6.5)) : go(pick, hub(1.91), TF.ramp(s, 6.8, 8.0)); carry = s >= 6.5 && s < 8.0; }
-      else if (s >= 8.2 && s < 10.5) { p = s < 8.7 ? go(hub(1.91), pick, TF.ramp(s, 8.2, 8.7)) : go(pick, hub(-1.9), TF.ramp(s, 9.0, 10.2)); carry = s >= 8.7 && s < 10.2; }
+      if (s >= 6 && s < 8.2) { p = s < 6.5 ? go(home, pk1, TF.ramp(s, 6, 6.5)) : go(pk1, hub(1.91), TF.ramp(s, 6.8, 8.0)); carry = s >= 6.5 - 1e-6 && s < 8.0 - 1e-6; }
+      else if (s >= 8.2 && s < 10.5) { p = s < 8.7 ? go(hub(1.91), pk2, TF.ramp(s, 8.2, 8.7)) : go(pk2, hub(-1.9), TF.ramp(s, 9.0, 10.2)); carry = s >= 8.7 - 1e-6 && s < 10.2 - 1e-6; }
       else if (s >= 10.5 && s < 11.2) p = go(hub(-1.9), home, TF.ramp(s, 10.5, 11.2));
+      // the CT body only draws all wheels at once (from 10.2): until then the front wheel the arm just set down is drawn here at the hub
+      if (car && s >= 8.0 - 1e-6 && s < 10.2 - 1e-6) IT.tireAt(ctx, hub(1.91)[0], hub(1.91)[1], 0.44 * M);
       K.arm(ctx, [2236, yF], p, { l1: 50, l2: 46, toolAng: Math.PI, bend: 1, tool: 8 });
       if (carry) IT.tireAt(ctx, p[0], p[1], 0.44 * M);
     } });

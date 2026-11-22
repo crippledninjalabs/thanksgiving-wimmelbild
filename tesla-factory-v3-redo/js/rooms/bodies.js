@@ -36,25 +36,59 @@
     seams: [[[0.95, 0.44], [1.12, 0.88]], [[-0.90, 0.44], [-0.90, 1.20]], [[0.68, 1.26], [-0.90, 1.22]]],
   };
   V.CAB = CAB;
+  // R3-8/8b: closed gold skin (one outline, arches cut out, lip, black lower trim, seams, door panel + tinted window)
+  const SKINCAB = [[2.10, 0.34], [2.14, 0.50], [2.11, 0.68], [1.55, 0.79], [1.15, 0.90], [0.68, 1.27], [0.32, 1.37], [-0.28, 1.33], [-0.90, 1.22], [-1.72, 1.01], [-2.06, 0.88], [-2.10, 0.52], [-2.04, 0.38], [-1.85, 0.34]];
+  const smoothPath = (ctx, pts) => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length - 1; i++) { const m = [(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2]; ctx.quadraticCurveTo(pts[i][0], pts[i][1], m[0], m[1]); }
+    ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); ctx.closePath(); };
+  const cabSkin = (ctx, pal, st, lod) => {
+    const open = st.doorOpen || 0;
+    if (open > 0) { P.poly(ctx, CAB.door, '#353a40', null);                       // dark grey cabin seen through the open door
+      if (st.seats) { P.poly(ctx, [[-0.3, 0.56], [0.12, 0.56], [0.06, 1.15], [-0.26, 1.18]], '#4a4f55', '#111', 0.6); P.poly(ctx, [[-0.22, 1.2], [0.02, 1.2], [0.0, 1.3], [-0.2, 1.3]], '#4a4f55', null); }
+      if (st.screen) P.poly(ctx, [[0.78, 0.96], [0.94, 0.95], [0.94, 1.06], [0.78, 1.07]], st.screen > 0.5 ? '#7dd3fc' : '#1f2937', null); }
+    B.noArchesAt(ctx, CAB.arches, () => {
+      smoothPath(ctx, SKINCAB); ctx.fillStyle = B.grad(ctx, pal.panelTop, pal.panelBot); ctx.fill();
+      ctx.save(); ctx.clip();
+      P.poly(ctx, [[-2.2, 0.30], [2.2, 0.30], [2.2, 0.46], [-2.2, 0.46]], '#2a2e33', null);   // black lower trim
+      ctx.restore(); smoothPath(ctx, SKINCAB); ctx.strokeStyle = pal.edge; ctx.lineWidth = 0.014; ctx.stroke();
+    });
+    CAB.arches.forEach(([x, y, r]) => { ctx.save(); smoothPath(ctx, SKINCAB); ctx.clip();
+      P.circle(ctx, [x, y], r, '#1f2328', null); P.circle(ctx, [x, y], r + 0.03, null, pal.top, 3); ctx.restore(); });   // wheel well + body-coloured lip
+    if (open > 0) { if (open < 1) P.poly(ctx, CAB.door, '#353a40', null); }
+    else { P.poly(ctx, CAB.door, null, pal.edge, 0.8); ctx.globalAlpha = 0.92; P.poly(ctx, CAB.win, '#1c2630', null); ctx.globalAlpha = 1; }
+    if (lod !== 'far') { P.line(ctx, [[0.95, 0.46], [1.12, 0.90]], pal.edge, 0.008); P.line(ctx, [[-0.90, 0.46], [-0.90, 1.20]], pal.edge, 0.008); P.line(ctx, [[0.68, 1.27], [-0.90, 1.22]], pal.edge, 0.006);
+      ctx.globalAlpha = 0.45; P.line(ctx, [[0.45, 1.33], [-0.70, 1.28]], '#ffffff', 0.025); ctx.globalAlpha = 1; }
+    const on = st.lit ? 1 : 0;                                                    // full-width light bars (nose + tail), dark until lit
+    P.line(ctx, [[2.13, 0.50], [2.12, 0.66], [1.72, 0.74]], on ? '#f8fafc' : '#c9ced3', 0.045); P.line(ctx, [[-2.09, 0.56], [-2.07, 0.84]], on ? '#ef4444' : '#7a2a2a', 0.05);
+    if (open > 0) P.at(ctx, CAB.hinge, open * 1.25, () => { ctx.save(); ctx.translate(-CAB.hinge[0], -CAB.hinge[1]);
+      panel(ctx, CAB.door, pal); if (open > 0.25) P.poly(ctx, CAB.door.map(([px, py]) => [px * 0.9 + 0.05, py * 0.92 + 0.05]), pal.inner, null);
+      ctx.globalAlpha = 0.9; P.poly(ctx, CAB.win, '#1c2630', null); ctx.globalAlpha = 1; ctx.restore(); });
+  };
+  const cabCart = (ctx, st) => {   // low body cart on 4 casters (rides the rollers with the body); sinks away once the body stands on its wheels
+    const k = st.cart !== undefined ? st.cart : (st.wheels ? 0 : 1); if (k <= 0) return;
+    ctx.save(); ctx.beginPath(); ctx.rect(-5, 0.0, 10, 5); ctx.clip();
+    P.at(ctx, [0, 0], 0, () => { ctx.translate(0, -(1 - k) * 0.4);
+      P.poly(ctx, [[-0.68, 0.24], [0.9, 0.24], [0.9, 0.34], [-0.68, 0.34]], '#3b4249', '#1d2126', 0.8);
+      for (const cx of [-0.58, -0.2, 0.3, 0.8]) { P.line(ctx, [[cx, 0.24], [cx, 0.17]], '#2a2f35', 0.04); P.circle(ctx, [cx, 0.13], 0.045, '#15181b', null); }
+      P.line(ctx, [[-0.66, 0.30], [0.88, 0.30]], '#f2c230', 0.02); });
+    ctx.restore(); };
   V.cab = (ctx, x, y, st, lod) => {
     P.begin(ctx, x, y, M, 1);
-    const draw = (pal) => {
+    const wF = st.wheelsF !== undefined ? st.wheelsF : st.wheels, wR = st.wheelsR !== undefined ? st.wheelsR : st.wheels;
+    if (st.castF) cabCart(ctx, st);
+    const cage = (pal) => {
       if (st.ring) { P.poly(ctx, [[-1.0, 0.45], [1.0, 0.45], [1.0, 0.55], [-1.0, 0.55]], pal.inner, pal.edge, 0.6);   // floor pan
         P.line(ctx, [[0.9, 0.5], [0.9, 0.92]], pal.inner, 0.04); }
-      if (st.seats) { P.poly(ctx, [[-0.3, 0.56], [0.12, 0.56], [0.06, 1.15], [-0.26, 1.18]], '#3d3935', '#111', 0.6); P.poly(ctx, [[-0.22, 1.2], [0.02, 1.2], [0.0, 1.3], [-0.2, 1.3]], '#3d3935', null); }
-      if (st.screen) P.poly(ctx, [[0.78, 0.96], [0.94, 0.95], [0.94, 1.06], [0.78, 1.07]], st.screen > 0.5 ? '#7dd3fc' : '#1f2937', null);
       if (st.castF) panel(ctx, CAB.castF, pal, CAB.arches);
       if (st.castR) panel(ctx, CAB.castR, pal, CAB.arches);
       if (st.ring) for (const k in CAB.ring) B.member(ctx, CAB.ring[k], k === 'roof' ? 0.075 : 0.07, pal);
-      if (st.door) P.at(ctx, CAB.hinge, (st.doorOpen || 0) * 1.25, () => { ctx.save(); ctx.translate(-CAB.hinge[0], -CAB.hinge[1]);
-        panel(ctx, CAB.door, pal); ctx.globalAlpha = 0.8; P.poly(ctx, CAB.win, '#22292f', null); ctx.globalAlpha = 1; ctx.restore(); });
     };
-    draw(st.castF && st.paint >= 1 ? V.GOLD : PAL.metal);
-    if (st.paint > 0 && st.paint < 1) { const xm = 2.25 - st.paint * 4.5; ctx.save(); ctx.beginPath(); ctx.rect(xm, -1, 6, 4); ctx.clip(); draw(V.GOLD); ctx.restore(); }
-    if (lod !== 'far') CAB.seams.forEach((sm, j) => bead(ctx, sm, st.beads === undefined ? 0 : TF.clamp(st.beads * 3 - j, 0, 1), st.paint > 0));
-    if (st.wheels) wheelsAt(ctx, CAB.arches, 0.38, st, lod, true);
-    if (st.lit && lod !== 'far') { P.line(ctx, [[2.12, 0.62], [1.70, 0.66]], '#f8fafc', 0.045); P.line(ctx, [[-2.08, 0.84], [-1.55, 0.84]], '#ef4444', 0.05); }
-    if (st.paint >= 1 && lod !== 'far') { ctx.globalAlpha = 0.45; P.line(ctx, [[0.45, 1.28], [-0.70, 1.20]], '#ffffff', 0.025); ctx.globalAlpha = 1; }
+    if (st.paint >= 1) cabSkin(ctx, V.GOLD, st, lod);
+    else { cage(PAL.metal);
+      if (st.paint > 0) { const xm = 2.25 - st.paint * 4.5; ctx.save(); ctx.beginPath(); ctx.rect(xm, -1, 6, 4); ctx.clip(); cabSkin(ctx, V.GOLD, st, lod); ctx.restore(); }
+      if (lod !== 'far') CAB.seams.forEach((sm, j) => bead(ctx, sm, st.beads === undefined ? 0 : TF.clamp(st.beads * 3 - j, 0, 1), st.paint > 0)); }
+    if (!(st.paint > 0) && st.seats) P.poly(ctx, [[-0.3, 0.56], [0.12, 0.56], [0.06, 1.15], [-0.26, 1.18]], '#3d3935', '#111', 0.6);
+    CAB.arches.forEach((a, i) => { if (i === 0 ? wF : wR) wheelsAt(ctx, [a], 0.38, st, lod, true); });
     P.end(ctx);
   };
   V.finishedCab = { castF: 1, castR: 1, ring: 1, beads: 1, paint: 1, seats: 1, screen: 1, door: 1, doorOpen: 0, pack: 1, wheels: 1, lit: 1 };
