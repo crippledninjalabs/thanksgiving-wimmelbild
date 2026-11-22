@@ -36,6 +36,13 @@
         for (let i = 0; i < 6; i++) f(ctx, x - 44 + i * 18, y - 3, i);
         tree(ctx, x + 50, y - 3, 14);
       },
+      elonMeal(ctx, x, y, k = 1) {   // festive plate: cookie + pudding + a small tree; treats vanish as k falls
+        D.rect(ctx, x - 28, y - 3, 56, 3, '#ffffff', '#9aa3ab', 0.6);
+        const f = TF.slot('christmas', 'food');
+        if (k > 0.6) f(ctx, x - 14, y - 3, 0);
+        if (k > 0.3) f(ctx, x, y - 3, 1);
+        tree(ctx, x + 20, y - 3, 12);
+      },
       feastMain(ctx, x, y, k) { if (k > 0.05) { D.rect(ctx, x - 8, y - 6 * k, 16, 6 * k, '#5b2c12', '#2a1408', 0.5); D.circle(ctx, x, y - 6 * k - 1, 2.2, '#15803d'); } },
       tableJumper: (ctx, x, y, pose) => ornament(ctx, x, y - ((pose && pose.peek) || 0), 7 * ((pose && pose.scale) || 1)),
       flock: (ctx, x, y, t) => tree(ctx, x, y - Math.abs(Math.sin(t * 2)), 10),

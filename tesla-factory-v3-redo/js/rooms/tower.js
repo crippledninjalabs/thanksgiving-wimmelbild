@@ -18,40 +18,57 @@
     [0, yBR], [6, yBR], [7, yBR], [11, yRingG], [12, yRingG], [16, yENG], [22, yENG], [24, yBR],
     [30, yBR], [31, yBR], [32, yENG], [37, yENG], [38, yBR], [48, yBR]
   ]);
+  TF.stage3.csRelease = { x: T.x + 40, y: csY(37) + 20 };   // where the CS lets go of the serviced Raptor at u48 37 (ship.js carries it on to the empty mount)
   // ---- finished odd Optimus (hand-off from 7C robotAt at t mod 24 = 20.5): sky-bridge -> TL -> CG -> arm -> ship alcove ----
   // a = seconds since hand-off. 0-14 walk 3800->car, 14-19.6 ride BR->CG, 19.6-23 walk arm + hatch -> alcove, 23-25.5 in alcove, door shut 25.5
   const CR0 = 20.5, SB = L.zoneById('SHIP').box, ALC = TF.stage3.alc, CARX = T.x + T.w - 14;
   const ALCX = SB.x + ALC.x0 + ALC.pitch * ALC.pick + ALC.w / 2;
   const crewA = (t) => TF.mod(t - CR0, 24);
   const idleF = (tl) => A.idle(tl);
-  const fcC = [0.35, 1.05], fcIdle = (tl) => A.carry(A.idle(tl), fcC, 0.3);
+  const fcC = [0.35, 1.05], fcIdle = (tl) => Object.assign(A.carry(A.idle(tl), fcC, 0.3), { head: -0.05 - 0.3 * Math.max(0, Math.sin(tl * Math.PI / 2)) });   // waiting for the TL car: glance up at its level indicator every 4 s
+  const cLook = (p) => (tl) => Object.assign({}, p, { head: -0.05 - 0.3 * Math.max(0, Math.sin(tl * Math.PI / 2)) });
   const crewSegs = [A.walk(14, 3800, CARX, { step: 0.62, carry: fcC, carryW: 0.3 }), A.hold(5.6, CARX, 1, fcIdle), A.walk(3.4, CARX, ALCX, { step: 0.6, carry: fcC, carryW: 0.3 }), A.hold(2.5, ALCX, 1, idleF)];
   const carY = (a) => {   // TL car y vs a (24 s period): G rest, up to BR for the robot, ride to CG, back down to G
-    if (a < 2.6) return TF.lerp(yCG, yG - 8, TF.ramp(a + 24, 20.6, 26.6));
+    if (a < 2.6) return TF.lerp(yCG, yG - 8, TF.ramp(a + 24, 23.3, 26.6));
     if (a < 8) return yG - 8;
     if (a < 13) return TF.lerp(yG - 8, yBR, TF.ramp(a, 8, 13));
     if (a < 14.6) return yBR;
     if (a < 19.6) return TF.lerp(yBR, yCG, TF.ramp(a, 14.6, 19.6));
-    if (a < 20.6) return yCG;
-    return TF.lerp(yCG, yG - 8, TF.ramp(a, 20.6, 26.6));
+    if (a < 23.3) return yCG;   // dwell for the outbound crew robot to board
+    return TF.lerp(yCG, yG - 8, TF.ramp(a, 23.3, 26.6));
   };
   const tlY = (u) => carY(TF.mod(u - CR0, 24));
   // 42 gag (beat k=1): this robot lifts the plate off the TL car floor (a 14-16), carries it, bolts it on the west skirt in stride (a 20.5-21.1); same route timing
   const XB = SB.x - 34, cBend = A.reach([0.26, 0.2], [0.18, 0.25], { lean: 0.35, hipY: 0.8, gripN: 0.8 }), cCarry = A.carry(A.stand(), [0.36, 1.0], 0.3);
   const cBolt = A.reach([0.5, 0.0], [0.35, 0.3], { lean: 0.35, hipY: 0.82, gripN: 0.8 });
-  const crewSegsG = [A.walk(14, 3800, CARX, { step: 0.62 }), A.keyed(2.0, CARX, 1, [[0, A.stand()], [0.45, cBend], [0.55, cBend], [1, cCarry]]), A.hold(3.6, CARX, 1, () => cCarry),
+  const crewSegsG = [A.walk(14, 3800, CARX, { step: 0.62, carry: fcC, carryW: 0.3 }), A.keyed(2.0, CARX, 1, [[0, A.stand()], [0.45, cBend], [0.55, cBend], [1, cCarry]]), A.hold(3.6, CARX, 1, cLook(cCarry)),
     A.walk(0.9, CARX, XB, { step: 0.6, carry: [0.36, 1.0], carryW: 0.3 }), A.keyed(0.6, XB, 1, [[0, cCarry], [0.45, cBolt], [0.6, cBolt], [1, A.stand()]]),
     A.walk(1.9, XB, ALCX, { step: 0.8 }), A.hold(2.5, ALCX, 1, idleF)];
   const crewAt = (a, t0) => {   // t0 = absolute start time of this robot's 24 s walk
-    if (a < 0 || a >= 25.5) return null;
+    if (a < 0 || a >= 25.5) return null;   // TODO C6: ship.js takes over inside the alcove (robot stays visible at ALCX until then)
     const gag = TF.fortyTwo(t0 + 15).k === 1;
-    return { st: A.run(gag ? crewSegsG : crewSegs, a, 0.25, false), y: a < 14 ? yBR : a < 19.6 ? carY(a) : yCG, gag, fc: !gag && a < 22.78 };
+    const kk = Math.round((t0 - 32.5) / 12), id = 'crew-' + TF.mod(Math.round((kk - 1) / 2), 2);   // same actor as the F7 odd robot it continues
+    return { st: Object.assign(A.run(gag ? crewSegsG : crewSegs, a, 0.25, false), { id }), y: a < 14 ? yBR : a < 19.6 ? carY(a) : yCG, gag, fc: a < 22.78 };
   };
   TF.stage3.crewUp = {
     list: (t) => { const a = crewA(t), r = [crewAt(a, t - a), crewAt(a + 24, t - a - 24)]; return r.filter(Boolean); },
     closeFrac: (t) => { const a = crewA(t); return a < 1.5 ? TF.ramp(a, 0, 1.5) : a < 20 ? 1 : a < 21.5 ? 1 - TF.ramp(a, 20, 21.5) : 0; },
     hatch: (t) => { const a = crewA(t); return a < 18.5 ? 0 : a < 19.5 ? TF.ramp(a, 18.5, 19.5) : a < 22 ? 1 : a < 23 ? 1 - TF.ramp(a, 22, 23) : 0; }
   };
+  // outbound crew (C6; same walk as ship.js's alcove exit): hatch -> arm -> TL car (boards 23.3, rides to G) -> west along the ground. rr = seconds since the crew-up hand-off clock
+  const WEND = 3400,   // walks on through the 1E lawn door (x~3745) and across the cafeteria floor, empty crate in hand, to the 1D/1E west side instead of stopping at the tower box edge (3724)
+     crewOutSegs = (() => {
+    const X0 = SB.x, crateX = X0 + SB.w / 2 + 70, AX0 = X0 + ALC.x0 + ALC.w / 2, cb = { step: 0.62, carry: fcC, carryW: 0.3 };
+    return [A.hold(1.0, AX0, 1), A.walk(2.4, AX0, crateX - 12, { step: 0.5 }), A.keyed(1.0, crateX - 12, 1, [[0, A.stand()], [0.5, cBend], [1, cCarry]]),
+      A.turn(0.4, crateX - 12, 1, () => cCarry), A.walk(3.2, crateX - 12, X0 - 26, cb), A.walk(2.3, X0 - 26, CARX, cb), A.hold(4.7, CARX, -1, cLook(cCarry)),
+      A.walk(14 * (CARX - WEND) / (CARX - 3800), CARX, WEND, cb)];
+  })(), crewOutEnd = 12 + A.total(crewOutSegs);
+  const crewOutAt = (rr, id) => {
+    if (rr < 12 || rr >= crewOutEnd) return null;
+    const y = rr < 23.3 ? yCG : rr < 27 ? carY(rr) : TF.lerp(yG - 8, yG, TF.ramp(rr, 27, 27.6));
+    return { st: Object.assign(A.run(crewOutSegs, rr - 12, 0.25, false), { id }), y, fc: rr >= 15.9, fcK: TF.ramp(rr, 15.9, 16.4) };
+  };
+  TF.stage3.crewOut = { at: crewOutAt };
   // tile Optimus (24 s): restack 0-3, pick 3-5.4, carry to the fixture 5.4-10.4, fit 10.4-12 / press 12-14.6, withdraw, carry back, set on pile
   const TP = T.x - 64, TFX = 4696, TC = [0.36, 1.0], QDP = 4725, CART = 4664;
   const tBend = A.reach([0.55, 0.5], [0.4, 0.45], { lean: 0.35, hipY: 0.8, gripN: 0.8 });
@@ -86,7 +103,7 @@
     A.walk(3.2, TFX, TP, { step: 0.7, carry: TC, carryW: 0.3 }), A.turn(0.4, TP, -1, () => tCar), A.keyed(1.2, TP, 1, [[0, tCar], [0.5, tBend], [1, tBend]])]);
   const TILE = [{ segs: tSegs, hand: [4.2, 23.1], led: [12, 14.6] }, { segs: tSegs1, hand: [1.8, 19.5], led: [8.2, 9.2] }, { segs: tSegs2, hand: [9.2, 19.9], led: [13.8, 14.6] }];
 
-  TF.transport({ id: 'Tower', period: 48, layer: 'main', box: { x: T.x - 80, y: T.y - 40, w: T.w + 200, h: T.h + 80 },
+  TF.transport({ id: 'Tower', period: 48, layer: 'main', box: { x: 3300, y: T.y - 40, w: T.x - 80 + T.w + 200 - 3300, h: T.h + 80 },   // west edge 3300: owns the sky-bridge walk (3800->CARX) and the crew-out walk into 1E (ends before the 48 s wrap)
     draw(ctx, t, theme, lod) {
       const u = s24(t), u48 = s48(t);
       // lattice
@@ -105,36 +122,41 @@
       // south/front face: CS rail + carriage
       D.rect(ctx, T.x + 8, T.y + 10, 8, T.h - 20, '#94a3b8', '#334155', 1);
       const cy = csY(u48);
-      // chopsticks arms (two prongs)
-      const reach = 30;
+      // chopsticks: boom pivots at the carriage, tips reach OUT to the trolley deck (k=1), clamp, lift, fold home (k=0), carry; release at the transporter
+      const RR = 1.3 * M, rampU = (a0, a1) => TF.ramp(u48, a0, a1), hx = T.x + 40;
+      const ringW = u48 >= 6 && u48 < 12, oldR = u48 >= 16 && u48 < 30.5, newR = u48 >= 30.5 && u48 < 37;
+      const kRing = Math.max(rampU(5.2, 6) - rampU(6.9, 7.9), 0), kRap = Math.max(rampU(29.5, 30.1) - rampU(30.5, 31), 0);
+      const k = u48 < 12 ? kRing : kRap;
+      const lf = 14 * rampU(6.5, 6.9) * (1 - rampU(6.9, 7.9));                          // ring lifted clear of the cart (cart stays)
+      const rel = u48 >= 11 && u48 < 12.6 ? rampU(11.5, 11.9) * (1 - rampU(12.1, 12.5)) : 0;   // prongs slide out from the ring after it sits on the transporter
+      const hov = (24 * k * (1 - rampU(30.1, 30.5))) * (u48 >= 29.5 && u48 < 30.5 ? 1 : 0) + (u48 >= 30.5 && u48 < 31 ? 24 * rampU(30.5, 30.8) * k : 0);
+      const ringY = TF.lerp(cy, yBR - 12 - RR, k) - lf, rapY = TF.lerp(cy + 20, yBR - 12, k) - hov;
+      const pX = TF.lerp(hx, BRX, k) - 30 * rel, payY = (u48 >= 6 && u48 < 12) ? ringY : (oldR || newR) ? rapY - 20 : cy;
+      const tipY = payY - 12, jaw = (ringW && u48 < 11.5) ? rampU(6, 6.5) : (oldR || newR) ? (u48 >= 29.5 && u48 < 30.5 ? 1 - rampU(30.1, 30.5) : u48 >= 30.5 && u48 < 31.2 ? rampU(30.5, 30.8) : 1) : 0;
       D.rect(ctx, T.x + 4, cy - 14, 16, 28, '#64748b', '#1e293b', 1);
-      D.line(ctx, [[T.x + 20, cy - 8], [T.x + 20 + reach, cy - 8]], '#475569', 5);
-      D.line(ctx, [[T.x + 20, cy + 8], [T.x + 20 + reach, cy + 8]], '#475569', 5);
-      D.rect(ctx, T.x + 16 + reach, cy - 14, 10, 28, '#334155');
-
-      // payload on CS
-      const ringOnCS = (u48 >= 7 && u48 < 12);             // A 7-12: carrying ring down to G
-      const newRaptorOnCS = (u48 >= 31 && u48 < 37);       // B 7-13: serviced raptor to ENG
-      const oldRaptorOnCS = (u48 >= 16 && u48 < 31);       // A 16-B 7: old raptor up to BR
-      const hx = T.x + 20 + reach - 10;
-      if (u48 >= 6 && u48 < 7) {   // bridge transfer: trolley deck -> CS prongs
-        const k = TF.ramp(u48, 6, 7), rx = TF.lerp(4490, hx, k), ry = TF.lerp(yBR - 12 - 1.3 * M, yBR, k);
-        ctx.beginPath(); ctx.arc(rx, ry, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
-        ctx.beginPath(); ctx.arc(rx, ry, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
-        if (lod !== 'far') IT.crate(ctx, rx, ry + 8);
-      }
-      if (ringOnCS) {
-        ctx.beginPath(); ctx.arc(hx, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
-        ctx.beginPath(); ctx.arc(hx, cy, 1.3 * M, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
-        if (lod !== 'far') IT.crate(ctx, hx, cy + 8);
-      }
-      if (newRaptorOnCS || oldRaptorOnCS) TF.stage3.raptor(ctx, hx, cy + 20, { pump: 1 });
+      for (const o of [-6, 6]) D.line(ctx, [[T.x + 20, cy + o], [pX, tipY + o * 0.6]], '#475569', 5);
+      D.rect(ctx, pX - 3, tipY - 10, 6, 12 + 10 * jaw, '#334155');   // hook jaw drops over the rim as it closes
+      const drawRing = (x, y) => {
+        ctx.beginPath(); ctx.arc(x, y, RR, 0, Math.PI * 2); ctx.strokeStyle = '#6b737b'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, RR, 0, Math.PI * 2); ctx.strokeStyle = '#c3c9cf'; ctx.lineWidth = 5; ctx.stroke();
+        if (lod !== 'far') IT.crate(ctx, x, y + 8);
+      };
+      if (ringW) drawRing(pX + 0, u48 >= 11.5 ? cy : ringY);   // on cart -> on hook -> on transporter deck (u12)
+      if (oldR || newR) TF.stage3.raptor(ctx, pX, rapY, { pump: 1 });
 
       // ship QD arm (tower to ship hatch) at CG height: extended while the crew robot crosses (u 10.5-18.6)
       const armY = yCG - 20, armL = 50 + 26 * (TF.ramp(u, 9.5, 10.5) - TF.ramp(u, 18.6, 19.6));
       D.rect(ctx, T.x + T.w, armY - 5, armL, 10, '#7b848c', '#2b2f34', 1);
       D.rect(ctx, T.x + T.w, yCG, armL, 5, '#9aa3ab', '#2b2f34', 0.8);   // walkway
       if (lod !== 'far') for (const r of TF.stage3.crewUp.list(t)) if (r.st.x < SB.x) { const f = A.draw(ctx, r.st, r.y); if (r.gag) TF.gag42.held(ctx, t, 'crew', f); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); } }
+      if (lod !== 'far') {   // outbound crew robot past the hatch plane (ship.js owns x >= SB.x - 2); empty crate stays in hand
+        const rr = TF.mod(t - CR0, 24), mm = Math.round((t - CR0 - rr) / 24), cid = (c) => 'crew-out-' + (TF.mod(c, 2) === 1 ? 0 : 1);
+        ctx.save(); ctx.beginPath(); ctx.rect(-1e6, -1e6, 1e6 + SB.x - 2, 2e6); ctx.clip();
+        for (const [k, r] of [[0, TF.stage3.crewOut.at(rr, cid(mm - 2))], [1, TF.stage3.crewOut.at(rr + 24, cid(mm - 3))]]) if (r) {
+          const f = A.draw(ctx, r.st, r.y); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); }
+        }
+        ctx.restore();
+      }
       TF.gag42.world(ctx, t, lod, ty);   // 42 plate: skirt / falling / pile / TL car, mallet, clang
 
       // tile pile at G + fit-check fixture by the booster QD; the tile Optimus carries the top tile there and back

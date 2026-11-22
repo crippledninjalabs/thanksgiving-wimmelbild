@@ -51,6 +51,7 @@
       for (let k = Math.floor((t - 40) / 12); k <= Math.floor(t / 12); k++) {
         const a = t - 12 * k; if (a < 0 || a >= 40) continue;
         const r = robotAt(a, TF.mod(k, 2) === 0); if (!r) continue;
+        if (a >= 26.5) r.id = 'crew-' + TF.mod((k - 1) / 2, 2);   // odd k only; Tower continues the same id from a=32.5
         if (r.build !== undefined) drawBuild(ctx, r, a, lod);
         else { if (a >= 26.5 && a < 29) { ctx.save(); ctx.beginPath(); ctx.rect(3560, yF8 - 120, 220, yF - yF8 + 120); ctx.clip(); A.draw(ctx, r, r.y); ctx.restore(); } else { const f = A.draw(ctx, r, r.y); if (r.fc) { const w = f.w(f.sk.wristN); IT.foodcrate(ctx, w[0], w[1] + 5); } } }
       }
@@ -134,7 +135,8 @@
       X.rack(ctx, 2340, yF, 0.9, 1.3, 2, 3, (c, x, y) => IT.pack(c, x + 4, y), lod);
       D.rect(ctx, 2434, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
       D.rect(ctx, 2472, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
-      D.rect(ctx, 2430, hY(1.0), 50, 4, '#9aa3ab'); if (lod !== 'far') { for (let i = 0; i < 2; i++) IT.tote(ctx, 2445 + i * 22, hY(1.0)); if (s >= 10.2 && s < 11.3) IT.tote(ctx, 2420, hY(1.0)); }
+      D.rect(ctx, 2430, hY(1.0), 50, 4, '#9aa3ab'); if (lod !== 'far') { const held7C = TF.elonTour && TF.elonTour.holding7C(t); for (let i = 0; i < 2; i++) { if (i === 0 && held7C) continue; IT.tote(ctx, 2445 + i * 22, hY(1.0)); }   // left tote (2445) is drawn by floor9 while Elon holds it
+       if (s >= 10.2 && s < 11.3) IT.tote(ctx, 2420, hY(1.0)); }
       D.rect(ctx, STAND - 30, yF - 6, 60, 6, '#7b848c'); D.rect(ctx, STAND - 34, hY(2.2), 6, 2.2 * M, '#9aa3ab'); D.rect(ctx, STAND - 34, hY(2.2), 26, 5, '#9aa3ab');
       K.cabinet(ctx, 2750, yF - 46, 16, 46, t, 75, lod);
     },
@@ -153,8 +155,8 @@
     const head = A.reach([0.3, 1.62], null, { gripN: 0.4, head: -0.1 }), cons = A.reach([0.45, 1.0], null, { gripN: 0.6, lean: 0.15 });
     const segs = [A.hold(1.5, OB, -1, (tl) => Object.assign(A.idle(tl), { head: 0.1 })), A.keyed(1.5, OB, -1, [[0, A.stand()], [0.3, head], [0.8, head], [1, A.stand()]]),
       A.turn(0.3, OB, -1), A.keyed(1.5, OB, 1, [[0, A.stand()], [0.4, cons], [1, cons]]),
-      A.walk(1.8, OB, 3420, { step: 0.6 }), A.hold(2.4, 3420, 1, (tl) => A.reach([0.45 + 0.08 * Math.sin(tl * 6), 1.5], null, { gripN: 0.7, head: -0.15 })),   // wipe the drone window sill
-      A.turn(0.3, 3420, 1), A.walk(1.8, 3420, OB, { step: 0.6 })];
+      A.walk(1.8, OB, 3082, { step: 0.6 }), A.hold(2.4, 3082, 1, (tl) => A.reach([0.46 + 0.03 * Math.sin(tl * 6), 1.38 + 0.04 * Math.sin(tl * 6 + 1)], null, { gripN: 0.7, head: -0.15 })),   // wipe the 7D pad screen (x 3105-3135, hY~1.2-1.5 m): hand lands at x~3105 on its glass
+      A.turn(0.3, 3082, 1), A.walk(1.8, 3082, OB, { step: 0.6 })];
     segs.push(A.turn(12 - A.total(segs), OB, -1));
     return (t) => A.run(segs, s12(t)); })();
   TF.room({ id: '7D', period: 12, box: L.roomById('7D').box,
@@ -194,11 +196,11 @@
       D.rect(ctx, 3741, hY(4.4), 18, 1.6 * M, '#dbeefc', '#7b848c', 1.2);
       // tube console (Elon tweaks it on his tour: lamps race and the riser whooshes)
       const tw = TF.elonTour && TF.elonTour.at7E(t);
-      D.rect(ctx, 3575, hY(1.65), 54, 1.65 * M, '#334155', '#1e293b', 1);
-      for (let i = 0; i < 3; i++) D.rect(ctx, 3582 + i * 16, hY(1.55), 12, 10, tw && (Math.floor(t * 6) + i) % 3 === 0 ? '#4ade80' : '#38bdf8');
-      D.circle(ctx, 3622, hY(1.15), 4, '#0f172a', '#94a3b8', 1);                                                                    // lever pivot
-      D.line(ctx, [[3622, hY(1.15)], [3622 + (tw ? 8 : -8), hY(1.15) - (tw ? 8 : 10)]], '#e2e8f0', 2);                              // lever flips on tour
-      if (tw && lod !== 'far') { ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * Math.PI * 8); D.rect(ctx, 3578, hY(1.5), 48, 6, '#67e8f9'); ctx.globalAlpha = 1; }
+      D.rect(ctx, 3513, hY(1.65), 54, 1.65 * M, '#334155', '#1e293b', 1);
+      for (let i = 0; i < 3; i++) D.rect(ctx, 3520 + i * 16, hY(1.55), 12, 10, tw && (Math.floor(t * 6) + i) % 3 === 0 ? '#4ade80' : '#38bdf8');
+      D.circle(ctx, 3551, hY(1.15), 4, '#0f172a', '#94a3b8', 1);                                                                    // lever pivot
+      D.line(ctx, [[3551, hY(1.15)], [3551 + (tw ? 8 : -8), hY(1.15) - (tw ? 8 : 10)]], '#e2e8f0', 2);                              // lever flips on tour
+      if (tw && lod !== 'far') { ctx.globalAlpha = 0.35 + 0.2 * Math.sin(t * Math.PI * 8); D.rect(ctx, 3516, hY(1.5), 48, 6, '#67e8f9'); ctx.globalAlpha = 1; }
       K.cabinet(ctx, 3300, yF - 46, 18, 46, t, 79, lod);
     },
     draw() {}, front() {} });

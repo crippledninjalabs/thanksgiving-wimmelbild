@@ -243,6 +243,8 @@
       if (u >= 1.7 && u < 5.7) K.wisp(ctx, 2919, hY(1.05), t, 2, lod, 0.3, '#f3f4f6', 30);
       D.rect(ctx, 3060, hY(0.9), 90, 4, '#9aa3ab'); D.rect(ctx, 3065, hY(0.9) + 4, 4, 0.86 * M, '#8a939b'); D.rect(ctx, 3140, hY(0.9) + 4, 4, 0.86 * M, '#8a939b');
       if (u >= 7.5 && u < 9.2 && lod !== 'far') { D.rect(ctx, 3085, hY(0.9) - 3, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, 3100, hY(0.9) - 3); }
+      D.rect(ctx, 2980, hY(1.0), 40, 4, '#9aa3ab'); D.rect(ctx, 2984, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b'); D.rect(ctx, 3012, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');   // landing shelf for the grocery drone
+      { const g = TF.mod(t - w0, 24); if (g >= 0.5 && g < 0.9 && lod !== 'far') { IT.groceries(ctx, 2992, hY(1.0)); IT.groceries(ctx, 3008, hY(1.0)); } }   // released -> cook takes them
       if (u >= 13.7 && u < 22.8 && lod !== 'far') IT.foodcrate(ctx, 3115, hY(0.9));
       D.rect(ctx, 3170, hY(0.9), 40, 0.9 * M, '#cbd5e1', '#6b7280', 1); D.rect(ctx, 2820, hY(1.1), 30, 1.1 * M, '#dfe4e8', '#7b848c', 1);
       if (lod !== 'far') D.line(ctx, [[2835, hY(1.1)], [2835 + 8 * Math.cos(t * Math.PI * 2), hY(1.1) - 6 + 4 * Math.sin(t * Math.PI * 2)]], '#4a5056', 1.5);
@@ -280,7 +282,8 @@
       D.rect(ctx, 3420, hY(0.8), 200, 5, '#b98b52', '#7d5a2c', 1); for (const x of [3430, 3610]) D.rect(ctx, x, hY(0.8) + 5, 5, 0.7 * M, '#7d5a2c');
       if (lod !== 'far') { if (u >= 2.9 && u < 15.5) { TF.slot(theme, 'feastSpread')(ctx, 3515, hY(0.8)); }
         for (const x of [3445, 3580, 3600]) D.rect(ctx, x - 7, hY(0.8) - 2, 14, 2, '#ffffff', '#9aa3ab', 0.5); }
-      if (u < 21.4 || u >= 22.8) IT.foodcrate(ctx, 3580, yF);
+      D.rect(ctx, 3540, hY(1.0), 40, 0.2 * M, '#9aa3ab', '#6d757d', 0.6);   // crate stand on the table at the drone's rest height (REST_H 1.0)
+      if (!R.groceries.grip(t, 1)) IT.foodcrate(ctx, 3560, hY(1.0));   // one owner: stand until the groceries drone's load lerp takes it (its x/height), then the gripper
       D.rect(ctx, 3738, hY(2.4), 14, 1.2 * M, '#dbeefc', '#7b848c', 1);
       D.rect(ctx, 3738, hY(2.1), 14, 2.1 * M, '#e5e7eb', '#7b848c', 1);
       // the Shiba's spot by the window: lying down, tail wag (24 s)
@@ -298,7 +301,6 @@
       if (lod === 'far') return;
       const u = TF.mod(t - sv0, 24), st = server(t), fig = A.draw(ctx, st, yF), w = fig.w(fig.sk.wristN);
       if (u < 1.4) { D.rect(ctx, w[0] - 15, w[1] - 2, 30, 3, '#ffffff', '#9aa3ab', 0.6); food(ctx, theme, w[0], w[1] - 2); }
-      if (u >= 21.4 && u < 22.8) IT.foodcrate(ctx, w[0], w[1] + 4);
       TF.gag42.jumper(ctx, theme, t, lod, 'room');   // 42 gag: the lawn jumper's lap of the table
     } });
 

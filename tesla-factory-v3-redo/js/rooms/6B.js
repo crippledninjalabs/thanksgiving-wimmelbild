@@ -66,7 +66,10 @@
   fsegs.push(A.hold(2.05, FX, -1, (tl) => wipe(tl)), A.turn(0.3, FX, -1), A.walk(1.3, FX, IX, { step: 0.55 }),
     A.keyed(1.6, IX, 1, [[0, A.stand()], [0.2, insp(0)], [0.9, insp(1)], [1, A.stand()]]),
     A.turn(0.3, IX, 1), A.walk(1.3, IX, FX, { step: 0.55 }));
-  fsegs.push(A.hold(12 - A.total(fsegs), FX, -1, (tl) => Object.assign(A.idle(tl), { head: -0.1 })));
+  fsegs.push(A.hold(12 - A.total(fsegs), FX, -1, (tl) => {   // park: tick the sill-bead gauge on the fixture (hand dips to the dial every 4 s, head follows it)
+    const k = 0.5 - 0.5 * Math.cos(tl * Math.PI / 2);
+    return A.reach([0.42 + 0.03 * k, 1.12 - 0.14 * k], [0.2, 0.9], { gripN: 0.3 + 0.4 * k, head: -0.1 - 0.25 * k, lean: 0.08 * k });
+  }));
   const fitter = (t) => A.run(fsegs, TF.mod(t - F0, 12));
   // panel position while the fitter holds it (11.7 .. 2.0 next pitch)
   const panelOnFitter = (t) => { const u = TF.mod(t - F0, 12); return u >= 0.4 && u < 2.7; };

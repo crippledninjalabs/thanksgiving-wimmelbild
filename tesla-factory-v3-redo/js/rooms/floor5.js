@@ -78,8 +78,13 @@
     } });
 
   // ================= 5D seats =================
-  const HOIST = (s) => TF.keys(s, [[1.2, 3010], [2.2, 3010], [3.2, ST.D + 8], [5.2, ST.D + 8], [6.0, 3010]]);
-  const hook = (s) => TF.keys(s, [[1.2, hY(2.6)], [1.8, hY(1.4)], [2.3, hY(1.4)], [2.8, hY(2.6)], [3.3, hY(2.6)], [4.3, hY(1.2)], [5.0, hY(1.2)], [5.6, hY(2.6)]]);
+  // seat ownership at the stock shelf (drone stop floor 5, x 2980, REST_H 1.0): drone gripper -> shelf (2 seats at 2975.5 / 2984.5) -> hoist hook, one owner per frame
+  const SEAT_Y = hY(1.0) + 1, SEAT_L = 2975.5, SEAT_R = 2984.5, st0 = TF.mod(TF.R.seats.window(0, 0)[0] + 0.6 + 0.5, 24);
+  const takes = [13.2, 25.2].map((a) => TF.mod(a - st0, 24)).sort((a, b) => a - b);   // hoist grabs at s 2.3 (tau 10.9 + 2.3, +12)
+  const seatsAt = (tt) => { const d = TF.mod(tt - st0, 24); return 2 - (d >= takes[0] ? 1 : 0) - (d >= takes[1] ? 1 : 0); };
+  const pickX = (s, t) => seatsAt(t - s + 2.3 - 0.01) >= 2 ? SEAT_R : SEAT_L;
+  const HOIST = (s, P) => TF.keys(s, [[1.2, 3010], [1.8, P], [2.4, P], [3.2, ST.D + 8], [5.2, ST.D + 8], [6.0, 3010]]);
+  const hook = (s) => TF.keys(s, [[1.2, hY(2.6)], [1.8, hY(1.4)], [2.3, SEAT_Y - 14], [2.4, SEAT_Y - 14], [2.8, hY(2.6)], [3.3, hY(2.6)], [4.3, hY(1.2)], [5.0, hY(1.2)], [5.6, hY(2.6)]]);
   TF.room({ id: '5D', period: 12, box: L.roomById('5D').box,
     ports: { D5DE: 'in', D5CD: 'out', F5R: 'both' },
     actors: ['5D.seatHoist', 'peek.shiba5D'],
@@ -91,9 +96,9 @@
       D.rect(ctx, 3088, hY(4.55), 10, hY(4.06) - 7 - hY(4.55), '#e3e7eb', '#9aa3ab', 0.8);
       D.rect(ctx, 3080, hY(4.06) - 7, 26, 9, '#c9d0d6', '#7b848c', 1);                               // vent box (Shiba peek)
       // seat stock rack (refilled from the seats basket), overhead seat hoist on its beam
-      const left = 2 - Math.floor(TF.mod(t - 10.9 - 2.3, 24) / 12) + 0;
-      X.rack(ctx, 2995, yF, 0.6, 1.1, 2, Math.max(0, left), (c, x, y) => IT.seat(c, x + 4, y), lod);
-      const s = sOf(t), hx = HOIST(s), hy = hook(s);
+      const s = sOf(t), hx = HOIST(s, pickX(s, t)), hy = hook(s), nSeat = TF.R.seats.grip(t, 0) ? 0 : seatsAt(t);
+      X.rack(ctx, 2960, yF, 0.8, 1.0, 1, 0, null, lod);   // frame only; the seats are drawn below at the drone's rest spot
+      if (lod !== 'far') { if (nSeat >= 1) IT.seat(ctx, SEAT_L, SEAT_Y); if (nSeat >= 2) IT.seat(ctx, SEAT_R, SEAT_Y); }
       X.hoist(ctx, hx, hY(2.7), hy, 2860, 3040);
       if (s >= 2.3 && s < 5.0 && lod !== 'far') { if (s >= 4.3) { ctx.save(); ctx.beginPath(); ctx.rect(hx - 40, hY(1.55), 80, 30); ctx.clip(); IT.seat(ctx, hx, hy + 14); ctx.restore(); } else IT.seat(ctx, hx, hy + 14); }
       K.cabinet(ctx, 3220, yF - 48, 22, 48, t, 23, lod);

@@ -36,6 +36,13 @@
         const f = TF.slot('valentines', 'food');
         for (let i = 0; i < 4; i++) f(ctx, x + 2 + i * 15, y - 3, i);
       },
+      elonMeal(ctx, x, y, k = 1) {   // heart-top chocolate cake + tart + berries; bites vanish as k falls
+        D.rect(ctx, x - 28, y - 3, 56, 3, '#ffffff', '#9aa3ab', 0.6);
+        const f = TF.slot('valentines', 'food');
+        if (k > 0.5) heart(ctx, x - 14, y - 9, 9, '#7f1d1d');
+        if (k > 0.2) f(ctx, x + 6, y - 3, 1);
+        if (k > 0.6) f(ctx, x + 20, y - 3, 2);
+      },
       feastMain(ctx, x, y, k) { if (k > 0.05) { heart(ctx, x, y - 3 - 7 * k, 3 + 6 * k, '#e11d48'); D.circle(ctx, x - 3, y - 1.5, 1.6, '#78716c'); } },
       tableJumper: (ctx, x, y, pose) => cupid(ctx, x, y - ((pose && pose.peek) || 0), (pose && pose.face) || 1, (pose && pose.scale) || 0.7),
       flock: (ctx, x, y, t) => heart(ctx, x, y - 5 - Math.abs(Math.sin(t * 2)) * 1.5, 5, '#fb7185'),

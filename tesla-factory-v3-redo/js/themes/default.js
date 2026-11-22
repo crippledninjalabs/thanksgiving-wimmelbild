@@ -3,6 +3,8 @@
 // anything missing falls back to this default theme, then to a no-op. Slot signatures (x,y = bottom-centre of the item):
 //   food(ctx,x,y,i)           one small plated food item (i = 0,1,2 picks a variant)
 //   feastSpread(ctx,x,y)      cafeteria table spread, centred on x, y = table top, ~110 wide
+//   elonMeal(ctx,x,y,k)       Elon's single place setting at the 1E table: x = setting centre, y = table top, ~56 wide; k = 1 full .. 0 eaten
+//                             (k optional, default 1). An Easter override should be eggs + chocolate (no separate easter theme file yet).
 //   feastMain(ctx,x,y,k)      robot-feast pan contents, k = 1 full .. 0 empty, y = pan rim
 //   tableJumper(ctx,x,y,pose) table-gag jumper, pose {scale, peek, face}
 //   flock(ctx,x,y,t)          one member of the lawn flock (the 42 gag), t = seconds for bobbing
@@ -58,6 +60,12 @@
         burger(ctx, x - 40, y - 3, 1.5); burger(ctx, x - 24, y - 3, 1.5);
         pizza(ctx, x - 4, y - 3, 2.2); pizza(ctx, x + 14, y - 3, 2.2);
         fries(ctx, x + 36, y - 3, 1.8); fries(ctx, x + 48, y - 3, 1.5);
+      },
+      elonMeal(ctx, x, y, k = 1) {   // Elon's lunch at 1E: plated burger + fries + cup, bites vanish as k falls
+        D.rect(ctx, x - 28, y - 3, 56, 3, '#ffffff', '#9aa3ab', 0.6);
+        if (k > 0.66) burger(ctx, x - 14, y - 3, 1.7);
+        if (k > 0.33) fries(ctx, x + 10, y - 3, 1.8);
+        D.rect(ctx, x + 21, y - 9, 6, 9, '#dc2626', '#7f1d1d', 0.5);
       },
       feastMain(ctx, x, y, k) {   // bolts + AA batteries + oil-can gravy, shrinking with k
         const n = Math.ceil(5 * k);

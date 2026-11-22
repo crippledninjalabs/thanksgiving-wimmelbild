@@ -1,4 +1,5 @@
 // West yard extras, east lawn, tank farm (FACTORY-MAP §5). Dock trucks stay in dock.js.
+// Item 20: fuel truck redrawn at dock/yard scale (M px/m, wheels r 0.45 M, 8.6 m long), parked in the lawn gap west of the farm; same 24 s loop.
 (function (G) {
   const TF = G.TF, TF3 = G.TF3, L = TF.layout, D = TF.draw, K = TF.kit, A = TF.act, M = TF.M, IT = TF.supply.items;
   TF.claimedZones = Object.assign(TF.claimedZones || {}, { YARD: 1, LAWN: 1, TANKFARM: 1 });
@@ -46,20 +47,30 @@
       D.rect(ctx, farm.x - 8, G0 - 36, 10, 36, '#64748b', '#1e293b', 1);
       D.circle(ctx, farm.x - 3, G0 - 40, 6, (u >= 3 && u < 15) ? '#93c5fd' : '#9aa3ab', '#1e293b', 1);
 
-      // fuel truck (from the east 0-3, hoses 3-4, pumps 4-14, unhooks 14-15, leaves east 15-19)
+      // fuel truck at yard scale (M px/m): ~8.6 m long, cab faces west, parks on the open lawn gap (X1 3750 .. farm.x), rear hose to the fill point
+      const TL = 8.6 * M, PARK = farm.x - 80 - TL;                  // front bumper x when parked (rear ends 80 px before the fill point)
       let fx = null;
-      if (u < 3) fx = TF.lerp(5400, farm.x - 120, TF.ramp(u, 0, 3));
-      else if (u < 15) fx = farm.x - 120;
-      else if (u < 19) fx = TF.lerp(farm.x - 120, 5400, TF.ramp(u, 15, 19));
-      if (fx != null && fx < 5350) {
-        D.rect(ctx, fx - 90, G0 - 44, 70, 28, '#94a3b8', '#334155', 1);          // tanker
-        D.line(ctx, [[fx - 55, G0 - 44], [fx - 55, G0 - 16]], '#64748b', 2);    // two compartments
-        D.rect(ctx, fx - 20, G0 - 50, 40, 34, '#475569', '#1e293b', 1);         // cab
-        D.rect(ctx, fx - 12, G0 - 44, 16, 10, '#bae6fd', '#64748b', 0.6);
-        D.circle(ctx, fx - 70, G0 - 8, 8, '#1f2937'); D.circle(ctx, fx - 30, G0 - 8, 8, '#1f2937'); D.circle(ctx, fx + 10, G0 - 8, 8, '#1f2937');
+      if (u < 3) fx = TF.lerp(5450, PARK, TF.ramp(u, 0, 3));
+      else if (u < 15) fx = PARK;
+      else if (u < 19) fx = TF.lerp(PARK, 5450, TF.ramp(u, 15, 19));
+      if (fx != null && fx < 5400) {
+        const wy = G0 - 0.45 * M, tx0 = fx + 1.9 * M, tx1 = fx + TL;
+        D.rect(ctx, fx, G0 - 0.9 * M, TL, 6, '#3a3f45');                                            // chassis rail
+        D.rect(ctx, tx0, G0 - 3.1 * M, tx1 - tx0, 2.2 * M, '#cbd5e1', '#475569', 1.4);              // tanker
+        D.rect(ctx, fx, G0 - 2.7 * M, 1.8 * M, 1.8 * M, '#e5e7eb', '#6b737b', 1.3);                 // cab
+        D.rect(ctx, fx + 4, G0 - 2.5 * M, 0.5 * M, 0.7 * M, '#22292f');                             // windscreen
+        D.rect(ctx, fx - 6, G0 - 1.2 * M, 6, 0.3 * M, '#9aa3ab');                                   // front bumper
+        if (lod !== 'far') {
+          for (let k = 1; k < 3; k++) D.line(ctx, [[tx0 + k * (tx1 - tx0) / 3, G0 - 3.1 * M], [tx0 + k * (tx1 - tx0) / 3, G0 - 0.9 * M]], '#64748b', 1.5);   // compartments
+          for (let k = 0; k < 3; k++) D.rect(ctx, tx0 + (k + 0.5) * (tx1 - tx0) / 3 - 10, G0 - 3.1 * M - 7, 20, 7, '#64748b', '#334155', 1); // manways
+          D.rect(ctx, tx0 + 6, G0 - 1.2 * M, tx1 - tx0 - 12, 8, '#f2c230');                          // hazard band
+          D.circle(ctx, fx + 0.9 * M, G0 - 2.0 * M, 12, '#0ea5e9', '#0c4a6e', 1);                    // roundel on the cab door
+        }
+        for (const wx of [fx + 0.9 * M, tx1 - 2.2 * M, tx1 - 1.2 * M]) { D.circle(ctx, wx, wy, 0.45 * M, '#1d1f22'); D.circle(ctx, wx, wy, 0.22 * M, '#9aa3ab'); }
         if (u >= 3 && u < 15) {
-          D.line(ctx, [[fx - 90, G0 - 30], [farm.x - 3, G0 - 40]], '#64748b', 3);
-          if (u >= 4 && u < 14) D.line(ctx, [[fx - 90, G0 - 30], [farm.x - 3, G0 - 40]], '#93c5fd', 1.5);
+          const hx = tx1, hy = G0 - 1.4 * M, ex = farm.x - 3, ey = G0 - 40, sag = [(hx + ex) / 2, G0 - 14];
+          D.line(ctx, [[hx, hy], [hx + 10, hy + 14], sag, [ex - 12, ey + 14], [ex, ey]], '#475569', 4, false);
+          if (u >= 4 && u < 14) D.line(ctx, [[hx, hy], [hx + 10, hy + 14], sag, [ex - 12, ey + 14], [ex, ey]], '#93c5fd', 1.8, false);
         }
       }
     } });

@@ -83,15 +83,35 @@
       return { path, sched: TF.track.schedule(keys, r.journey), win, back: t, stops };
     };
     r.legs = Array.from({ length: r.n }, (_, i) => r.build(r.variants ? r.variants(i) : r.stops));
-    // contents at journey time u for member i
-    r.content = (u, i) => {
-      const lg = r.legs[i];
-      if (u >= r.journey - 0.4) return r.start.slice();          // loaded at base just before departure
-      if (u >= lg.back) return [];                                // back at base, unloaded
-      let c = r.start.slice();
-      lg.stops.forEach((st, k) => { if (u >= lg.win[k][0] + 0.6) { for (const it of st.unload || []) { const j = c.indexOf(it); if (j >= 0) c.splice(j, 1); } c = c.concat(st.load || []); } });
+    // Held items at journey time u: [{k, p, h}] p = 0 on the table/shelf .. 1 in the gripper; h = rest height (m) of the table.
+    // Unload = item lerps gripper -> table at the start of the dwell; load = table -> gripper at the end of it (0.6 s lower/raise keys).
+    const TW = 0.5, REST_H = 1.0;
+    r.held = (u, i) => {
+      const lg = r.legs[i], out = [], fl = r.base === 'dock' ? 0 : r.base.floor;
+      if (u >= r.journey - TW) { const p = r.base === 'dock' ? 1 : TF.ramp(u, r.journey - TW, r.journey); return r.start.map((k) => ({ k, p, h: REST_H, fl })); }
+      if (u >= lg.back) return [];
+      let c = r.start.map((k) => ({ k, p: 1 }));
+      lg.stops.forEach((st, k) => {
+        const a = lg.win[k][0] + 0.6, d = st.dwell || 1.5, tw = Math.min(TW, d / 2), fz = st.floor;
+        if (u < a) return;
+        const un = st.unload || [], ld = st.load || [];
+        const keep = [], rel = [];
+        const pool = un.slice();
+        for (const it of c) { const j = pool.indexOf(it.k); if (j >= 0) { pool.splice(j, 1); if (u < a + tw) rel.push({ k: it.k, p: Math.min(it.p, 1 - TF.ramp(u, a, a + tw)), h: REST_H, fl: fz }); } else keep.push(it); }
+        c = keep.concat(rel);
+        const l0 = a + d - tw;
+        if (u >= l0) for (const k2 of ld) c.push({ k: k2, p: TF.ramp(u, l0, a + d), h: REST_H, fl: fz });
+        else if (u >= a + d) for (const k2 of ld) c.push({ k: k2, p: 1 });
+      });
       return c;
     };
+    r.content = (u, i) => r.held(u, i).map((x) => x.k);
+    // true while member i's gripper is taking the base load (room hides its own table copy of the unit)
+    r.holding = (t) => { for (let i = 0; i < r.n; i++) { const u = TF.mod(t - r.dep - i * r.period, r.journey); if (u >= r.journey - TW) return true; } return false; };
+    // true while a drone owns the unit at stop k (unload: arrival .. end of the gripper->table lerp; load: start of table->gripper lerp .. leaving).
+    // A room hides its own shelf copy while this is true, so there is one owner per frame.
+    r.grip = (t, k) => { for (let i = 0; i < r.n; i++) { const lg = r.legs[i], st = lg.stops[k], u = TF.mod(t - r.dep - i * r.period, r.journey), w = lg.win[k], d = st.dwell || 1.5, tw = Math.min(TW, d / 2);
+      if ((st.unload && st.unload.length && u >= w[0] && u < w[0] + 0.6 + tw) || (st.load && st.load.length && u >= w[0] + 0.6 + d - tw && u < w[1])) return true; } return false; };
     r.at = (t, i) => { const u = TF.mod(t - r.dep - i * r.period, r.journey), lg = r.legs[i], st = lg.sched(u), xy = lg.path.at(st.s);
       return { u, x: xy[0], y: xy[1], drop: st.k[0] }; };
     // absolute window (tau mod period) when member i sits at stop k
@@ -137,8 +157,10 @@
       if (lod === 'far') return;
       for (const r of S.capsules) for (let i = 0; i < r.n; i++) { const c = r.at(t, i); if (c && c.s > 1) TF.tube.capsule(ctx, c.path, c.s, c.v, lod, theme.decor.capsuleDecal, r.col); }
       for (const r of S.baskets) for (let i = 0; i < r.n; i++) {
-        const b = r.at(t, i), items = r.content(b.u, i);
-        TF.basket.draw(ctx, b.x, b.y, b.drop, lod, items.length ? (c, px, py) => items.slice(0, 3).forEach((k, j) => IT[k](c, px - 9 + j * (k === 'wheels' ? R_TIRE * 1.1 : 9), py + 1)) : null);
+        const b = r.at(t, i), items = r.held(b.u, i);
+        TF.basket.draw(ctx, b.x, b.y, b.drop, lod, items.length ? (c, px, py) => items.slice(0, 3).forEach((o, j) => {
+          const k = o.k, fl = o.fl === 0 ? 0 : (o.fl || 0), ry = o.p < 1 && fl ? L.hY(fl, o.h) : py;   // table copy sits at the rest height
+          IT[k](c, px + (j - (Math.min(items.length, 3) - 1) / 2) * (k === 'wheels' ? R_TIRE * 1.1 : 9), py + 1 + (ry - py) * (1 - o.p)); }) : null);
       }
     } });
 

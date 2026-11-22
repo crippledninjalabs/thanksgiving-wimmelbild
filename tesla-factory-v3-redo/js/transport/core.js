@@ -50,13 +50,18 @@
     [5.7, 6.4, 8, 8], [6.4, 6.9, 8, 6], [6.9, 7.4, 6, 6], [7.4, 7.9, 6, 5], [7.9, 8.9, 5, 5], [8.9, 10.9, 5, 1],
     [10.9, 11.9, 1, 1], [11.9, 13.4, 1, 4], [13.4, 14.4, 4, 4], [14.4, 15.9, 4, 1], [15.9, 16.9, 1, 1], [16.9, 18.9, 1, 5],
     [18.9, 20.9, 5, 5], [20.9, 22.9, 5, 1], [22.9, 24, 1, 1]];
+  // follow: the DOCK AGV (id 'bl-dock') pushes the whole row into the cage; dx follows its x (dock.js draws the same row before 0).
+  // hands: gantry loader bots (cagelift.drawHands) at every non-car on/off; cars drive themselves (room clips at the gate).
+  const follow = (lt) => TF.supply.fkX(Math.min(lt, 0.55)) - 1068;
   const loads = [
-    { kind: 'kit', on: [0, 0.8, 'w'], off: [1.4, 2.0, 'e'], dx: -78 },
-    { kind: 'coil', on: [0, 0.8, 'w'], off: [1.4, 2.0, 'e'], dx: 22 },
-    { kind: 'ringcoil', on: [0, 0.8, 'w'], off: [5.75, 6.35, 'e'], dx: -22, cycle: 0 },
-    { kind: 'ingot', on: [0, 0.8, 'w'], off: [3.15, 3.65, 'e'], dx: 62 },
-    { kind: 'ingot', on: [0, 0.8, 'w'], off: [6.9, 6.9, 'e'], dx: TF.layout.ingotDx = 96 },   // F6 ingot: 6A takes over at 6.9
-    { kind: 'kitflat', on: [1.45, 2.0, 'e'], off: [23.0, 23.5, 'w'], dx: -60 },   // stage 2: the folded empty Semi-kit crate rides back to the DOCK backload
+    { kind: 'kit', on: [0, 0.8, 'w'], off: [1.4, 2.0, 'e'], dx: -78, follow, hands: { off: { id: 'bl-f2-kit', barH: 66 } } },
+    { kind: 'coil', on: [0, 0.8, 'w'], off: [1.4, 2.0, 'e'], dx: 22, follow, hands: { off: { id: 'bl-f2-coil', barH: 56 } } },
+    { kind: 'ringcoil', on: [0, 0.8, 'w'], off: [5.75, 6.35, 'e'], dx: -22, cycle: 0, follow, hands: { off: { id: 'bl-f8-ring', barH: 66 } } },
+    { kind: 'ingot', on: [0, 0.8, 'w'], off: [3.15, 3.65, 'e'], dx: 62, follow, hands: { off: { id: 'bl-f4-ingot', barH: 50 } } },
+    { kind: 'ingot', on: [0, 0.8, 'w'], off: [6.9, 6.9, 'e'], dx: TF.layout.ingotDx = 96, follow,   // F6 ingot: 6A takes over at 6.9
+      hands: { carry: { id: 'bl-f6-ingot', barH: 50, w: [6.9, 7.6], x0: (S.BL[0] + S.BL[1]) / 2 + 96, x1: 1392 } } },
+    { kind: 'kitflat', on: [1.45, 2.0, 'e'], off: [23.0, 23.5, 'w'], dx: -60,   // stage 2: the folded empty Semi-kit crate rides back to the DOCK backload bin
+      hands: { on: { id: 'bl-f2-flat', barH: 32 }, off: { id: 'bl-dock-flat', barH: 70 } } },
     { kind: 'modelY', on: [7.9, 8.6, 'e'], off: [10.95, 11.8, 'e'] },
     { kind: 'cab', on: [13.45, 14.2, 'e'], off: [15.95, 16.8, 'e'] },
     { kind: 'modelY', on: [19.9, 20.6, 'e'], off: [22.95, 23.55, 'e'] },

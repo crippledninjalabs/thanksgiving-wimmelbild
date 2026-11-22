@@ -46,9 +46,9 @@
 
   // ---------- truck + AGV forklift ----------
   const truckRear = (t) => { const u = TF.mod(t, 24); return u < 3 ? TF.lerp(845, -60, TF.ramp(u, 0, 3)) : u < 15 ? -60 : u < 18 ? TF.lerp(-60, 845, TF.ramp(u, 15, 18)) : 845; };
-  const FK = [[0, 1010], [0.8, 1092], [1.6, 1000], [7.0, 1000], [8.0, 1772], [8.4, 1772], [10.6, 742], [11.0, 742], [13.0, 1000], [18.0, 1000], [18.8, 872], [19.1, 872], [19.8, 905], [20.1, 905], [20.7, 935], [21.0, 935], [21.9, 872], [22.5, 872], [23.4, 1010], [24, 1010]];
+  const FK = [[0, 1010], [0.55, 1068], [0.9, 1045], [1.6, 1000], [7.0, 1000], [8.0, 1772], [8.4, 1772], [10.6, 742], [11.0, 742], [13.0, 1000], [18.0, 1000], [18.8, 872], [19.1, 872], [19.8, 905], [20.1, 905], [20.7, 935], [21.0, 935], [21.9, 872], [22.5, 872], [23.5, 872], [24, 1010]];
   const fkX = (t) => TF.keys(TF.mod(t, 24), FK);
-  const fkLoad = (t) => { const u = TF.mod(t, 24); return u >= 8.2 && u < 10.8 ? 'C' : u < 0.8 || u >= 22.3 ? 'A' : u >= 18.95 && u < 19.95 ? 'B' : u >= 20.85 && u < 22.05 ? 'R' : null; };
+  const fkLoad = (t) => { const u = TF.mod(t, 24); return u >= 8.2 && u < 10.8 ? 'C' : u >= 22.3 ? 'A' : u < 0.9 ? 'P' : u >= 18.95 && u < 19.95 ? 'B' : u >= 20.85 && u < 22.05 ? 'R' : null; };
   const binLevel = (t) => { const u = TF.mod(t - 21.0, 24); return 0.15 + 0.7 * u / 24; };          // fills all cycle, emptied at 21.0
   const tableItems = (t) => { const u = TF.mod(t - 19.95, 24); return Math.max(0, 13 - Math.floor(u / (24 / 13))); };
 
@@ -72,8 +72,10 @@
     K.beacon(ctx, x - 4, hY(1.1) - 4, t, true);
     if (!load) return;
     const px = x + 32;
-    if (load === 'A') { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 1100, G0 + 10); ctx.clip();
-      IT.crate(ctx, px - 6, hY(0.3)); D.circle(ctx, px + 10, hY(0.3) - 9, 9, '#b9c0c7', '#6d757d', 1); TF.parts.ingot(ctx, px + 2, hY(0.3) - 18, lod, 0); ctx.restore(); }
+    if (load === 'A' || load === 'P') {   // 'bl-dock': the AGV pushes the Semi-kit / coil / ingot row across the dock and into the BL cage (cage takes the row at tau 0, same x)
+      D.rect(ctx, x + 45, hY(0.3) - 44, 4, 44, '#4a5056', '#2b3035', 0.8);
+      if (load === 'A') { const cy = Math.floor(TF.mod(TF.mod(t, 24) >= 22.3 ? t + 24 - TF.mod(t, 24) : t, 48) / 24), BL = TF.BL;
+        for (const l of BL.cfg.loads) if (l.follow && (l.cycle === undefined || l.cycle === cy)) BL.drawLoad(ctx, l.kind, (BL.cfg.x0 + BL.cfg.x1) / 2 + l.dx + fkX(t) - 1068, L.floorY(1), lod); } }
     else if (load === 'B') for (let i = 0; i < 4; i++) IT.box(ctx, px - 6 + (i % 2) * 12, hY(0.3) - Math.floor(i / 2) * 8);
     else if (load === 'C') { D.rect(ctx, px - 14, hY(0.3) - 2.0 * M, 30, 2.0 * M - 2, '#d6b07a', '#7d5a2c', 1); D.tLogo(ctx, px + 1, hY(0.3) - 1.0 * M, 10); }
     else { D.rect(ctx, px - 11, hY(0.3) - 14, 22, 14, '#6b7280', '#374151', 0.8); }
@@ -128,5 +130,5 @@
       if (lod === 'far') return;
       const st = optimus(t); A.draw(ctx, st, G0);
     } });
-  S.dockOptimus = optimus; S.departures = departures;
+  S.fkX = fkX; S.dockOptimus = optimus; S.departures = departures;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -9,19 +9,30 @@
       D.line(ctx, [[x0, y], [x1, y]], '#7d868f', 1.6);
       if (lod !== 'far') D.line(ctx, [[x0, y - 7], [x1, y - 7]], '#a8b0b8', 1.2);
     },
-    // (x, y) = trolley on the cable; drop = cord length beyond the rest length; tilt = rad (tipping)
+    // Cargo drone riding the cable rail. (x, y) = rail point; drop = how far the gripper lowers at a stop; tilt = rad.
+    // payload(ctx, x, bottomY) is drawn in the gripper (world coords). Returns { bottom, gx, gy } (gripper bottom).
     draw(ctx, x, y, drop, lod, payload, tilt = 0) {
-      const W = this.W, H = this.H, by = y + 4 + drop;
-      D.rect(ctx, x - 6, y - 4, 12, 7, '#4f5861');                                 // trolley
-      if (lod !== 'far') { D.circle(ctx, x - 3, y - 4, 2.4, '#2f353b'); D.circle(ctx, x + 3, y - 4, 2.4, '#2f353b'); }
-      D.line(ctx, [[x, y + 3], [x, by]], '#59626b', 1);                            // cord
-      ctx.save(); ctx.translate(x, by); ctx.rotate(tilt);
-      D.line(ctx, [[0, 0], [-W / 2, 6]], '#59626b', 1); D.line(ctx, [[0, 0], [W / 2, 6]], '#59626b', 1);
-      if (payload) payload(ctx, 0, 6 + H - 3);                                     // payload sits on the basket floor
-      D.poly(ctx, [[-W / 2, 6], [W / 2, 6], [W / 2 - 3, 6 + H], [-W / 2 + 3, 6 + H]], 'rgba(235,170,60,0.25)', '#c98a2b', 1.6);
-      if (lod !== 'far') for (let i = 1; i < 4; i++) D.line(ctx, [[-W / 2 + i * W / 4, 6], [-W / 2 + i * W / 4 + (i - 2) * 0.8, 6 + H]], '#d9a54d', 0.8);
+      const gy = y + 26 + drop;                                                    // gripper pad level
+      ctx.save(); ctx.translate(x, y + 10); ctx.rotate(tilt * 0.5); ctx.translate(-x, -(y + 10));
+      D.rect(ctx, x - 5, y - 4, 10, 5, '#4f5861');                                 // rail shoe
+      D.rect(ctx, x - 13, y + 3, 26, 11, '#e8ebee', '#6b737b', 1);                 // body
+      D.rect(ctx, x - 8, y + 6, 16, 4, '#2f353b');                                 // sensor band
+      if (lod === 'far') { D.rect(ctx, x - 17, y + 1, 34, 2, '#8a929a'); ctx.restore(); if (payload) payload(ctx, x, gy + 12); return { bottom: gy + 12, gx: x, gy: gy + 12 }; }
+      D.circle(ctx, x + 6, y + 8, 1.4, '#38bdf8');                                 // status eye
+      const ph = Math.floor(x * 0.4) % 2 ? 1 : 0.35;                                // rotor blur (spins as it travels)
+      for (const sx of [-1, 1]) {
+        D.line(ctx, [[x + sx * 13, y + 6], [x + sx * 19, y + 1]], '#59626b', 1.5);  // arm
+        D.rect(ctx, x + sx * 19 - 1, y - 1, 2, 3, '#2f353b');
+        D.line(ctx, [[x + sx * 19 - 9 * ph, y - 2], [x + sx * 19 + 9 * ph, y - 2]], 'rgba(60,70,80,0.7)', 1.6);   // rotor
+      }
+      D.line(ctx, [[x, y + 14], [x, gy]], '#59626b', 1);                           // winch line
+      D.rect(ctx, x - 9, gy, 18, 3, '#4f5861');                                    // gripper head
+      const top = gy + 3, bot = gy + 12;
       ctx.restore();
-      return { bottom: by + 6 + H };
+      if (payload) payload(ctx, x, bot);                                           // payload in the claws
+      D.line(ctx, [[x - 9, top], [x - 9, bot], [x - 5, bot + 1]], '#c98a2b', 1.8); // claws
+      D.line(ctx, [[x + 9, top], [x + 9, bot], [x + 5, bot + 1]], '#c98a2b', 1.8);
+      return { bottom: bot + 1, gx: x, gy: bot };
     },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

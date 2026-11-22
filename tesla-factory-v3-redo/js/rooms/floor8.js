@@ -121,32 +121,74 @@
     } });
 
   // ================= 8D Raptor service (ONE Raptor tech, 48 s) =================
-  const RX = 3080;
-  const raptor = (ctx, x, y, st, lod) => {   // st: {nozzle 0 off .. 1 on, pump: 'old'|'new'|null, inj}
+  // One Raptor, one place at every instant: stand (u<22.6, >=39.7) -> hoist hook (22.6-25) -> 8E trolley (25-37.1) -> hook (37.1-39.7) -> stand.
+  const RX = 3092;   // stand centre (was 3080): clears the H78 drop tube/receiver at 3050-3080
+  const raptor = (ctx, x, y, st, lod) => {   // y = base (pad/deck top); st: {nozzle 0 off .. 1 on, pump: 'old'|'new'|null, inj}
+    const off = 1 - st.nozzle, nx = x + off * 34, ny = y - 2.0 * M + off * 0.4 * M;   // detached bell rests ON the pad (bottom == y), never below it
+    D.poly(ctx, [[nx - 10, ny], [nx + 10, ny], [nx + 30, ny + 1.6 * M], [nx - 30, ny + 1.6 * M]], '#9aa1a8', '#4a5056', 1);
+    if (lod !== 'far') for (let k = 1; k < 4; k++) D.line(ctx, [[nx - 10 - k * 5, ny + k * 0.4 * M], [nx + 10 + k * 5, ny + k * 0.4 * M]], '#7b848c', 0.8);
     D.rect(ctx, x - 18, y - 3.0 * M, 36, 0.9 * M, '#5f6b77', '#2b2f34', 1);                         // powerhead
-    if (st.pump) D.circle(ctx, x + 16, y - 2.7 * M, 9, st.pump === 'old' ? '#78716c' : '#cbd5e1', '#2b2f34', 1);
+    if (st.pump) D.circle(ctx, x + 26, y - 1.5 * M, 8, st.pump === 'old' ? '#78716c' : '#cbd5e1', '#2b2f34', 1);   // side-mounted turbopump
     if (st.inj) D.rect(ctx, x - 10, y - 2.12 * M, 20, 5, '#ef4444');
-    const ny = y - 2.0 * M + (1 - st.nozzle) * 1.4 * M;
-    D.poly(ctx, [[x - 10, ny], [x + 10, ny], [x + 30, ny + 1.6 * M], [x - 30, ny + 1.6 * M]], '#9aa1a8', '#4a5056', 1);
-    if (lod !== 'far') for (let k = 1; k < 4; k++) D.line(ctx, [[x - 10 - k * 5, ny + k * 0.4 * M], [x + 10 + k * 5, ny + k * 0.4 * M]], '#7b848c', 0.8);
   };
-  // engine on the stand 37 .. 24(+48); nozzle off 38-41, pump swap 41-46, injectors in at 46 (capsule), nozzle on 49-54 (=1-6)
-  const rstate = (u) => ({ nozzle: u >= 37 ? 1 - TF.ramp(u, 38, 41) : u < 1 ? 0 : TF.ramp(u, 1, 6), pump: u >= 41 && u < 43.5 ? null : u >= 37 && u < 41 ? 'old' : 'new', inj: u < 37 ? true : u >= 46 });
+  // engine on the stand: nozzle off 41.1-42.3, old pump out 42.8, new pump in 0.7, injectors in 1.7, nozzle on 2.5-6.5
+  const rstate = (u) => ({ nozzle: u >= 36 ? 1 - TF.ramp(u, 41.1, 42.3) : u < 2.5 ? 0 : TF.ramp(u, 2.5, 6.5),
+    pump: (u >= 42.8 || u < 0.7) ? null : (u >= 37.1 && u < 42.8) ? 'old' : 'new', inj: u >= 1.7 && u < 36 });
+  const HXK = [[0, RX], [23.2, RX], [24.4, 3420], [25.8, 3420], [27.8, RX], [35.0, RX], [36.4, 3420], [37.7, 3420], [39.0, RX], [48, RX]];
+  const HYK = [[0, -178], [21.8, -178], [22.6, -160], [23.2, -172], [24.4, -172], [25.0, -164], [25.8, -178], [36.4, -178], [37.1, -164], [37.7, -172], [39.0, -172], [39.7, -160], [40.5, -178], [48, -178]];
+  const hoistAt = (u) => ({ x: TF.keys(u, HXK), y: yF + TF.keys(u, HYK) });   // hook point; carried Raptor base = hook y + 152 (clamped to the pad)
+  const rWhere = (u) => (u < 22.6 || u >= 39.7) ? 'stand' : (u >= 25 && u < 37.1) ? 'trolley' : 'hook';
+  const drawHoist = (ctx, u, lod, xa, xb) => {   // drawn by 8D (x<3280) and 8E (x>=3280) so a carried Raptor never depends on which room is culled
+    const h = hoistAt(u);
+    ctx.save(); ctx.beginPath(); ctx.rect(xa, yF - 420, xb - xa, 460); ctx.clip();
+    X.hoist(ctx, h.x, hY(3.7), h.y, 2850, 3460);
+    if (rWhere(u) === 'hook') raptor(ctx, h.x, Math.min(h.y + 152, yF - 8), u < 30 ? { nozzle: 1, pump: 'new', inj: true } : { nozzle: 1, pump: 'old', inj: false }, lod);
+    ctx.restore();
+  };
+  const S_ = 3122, P_ = 3045, T_ = 2950;                               // work spot at the Raptor, pendant/receiver spot, basket spot
+  const SITE = [RX + 26, yF - 8 - 1.5 * M], INJ = [RX, yF - 8 - 2.12 * M], BOXP = [3021, yF - 22], RECP = [3060, hY(1.75) - 8], RECI = [3072, hY(1.75) - 4];
+  const lerp2 = (a, b, k) => [TF.lerp(a[0], b[0], k), TF.lerp(a[1], b[1], k)];
+  const SLUMP = A.reach([0.2, 0.6], [0.15, 0.55], { lean: 0.55, head: 0.8, hipY: 0.62, gripN: 0, gripF: 0 });
+  // Elon's 8D stop (tour-local tg from win['8D'][0]): tech slumps at the pad ~0.5 s after Elon arrives, Elon walks over (tg 4.45), opens the chest panel, LED on at 6.6, tech rises 6.6-7.6
+  const ovrTg = (t) => { const E = TF.elonTour; return E && E.win && E.win['8D'] ? E.g(t) - E.win['8D'][0] : -99; };
+  const ovrW = (tg) => TF.smooth(TF.lin(tg, -0.5, 0.5)) * (1 - TF.smooth(TF.lin(tg, 7.2, 8.8)));
   const tech = (() => {
     const low = A.reach([0.4, 0.8], [0.25, 0.85], { lean: 0.3, hipY: 0.86, gripN: 1 }), up = A.reach([0.4, 1.5], [0.25, 1.45], { gripN: 1, head: -0.1 });
-    const segs = [A.hold(2.0, 3240, -1, (tl) => A.reach([0.45, 1.1], null, { gripN: 0.8, lean: 0.2 })),           // A0: help the loader arm sit the ring on the trolley
-      A.walk(1.5, 3240, 3130, { step: 0.5 }), A.hold(4.0, 3130, -1, (tl) => low),                                  // nozzle back on (1-6)
-      A.hold(3.0, 3130, -1, (tl) => { const p = up; return Object.assign({}, p, { handN: [0.4 + 0.03 * Math.sin(tl * 9), 1.5] }); }),   // torque the powerhead
-      A.keyed(1.0, 3130, -1, [[0, A.stand()], [1, low]]), A.hold(1.0, 3130, -1, () => low),                       // scrap tote of old injectors to the basket stop
-      A.walk(0.8, 3130, 2950, { step: 0.5, carry: [0.35, 0.9], carryW: 0.3 }), A.keyed(1.0, 2950, -1, [[0, A.stand()], [0.5, A.reach([0.3, 1.9], null, { head: -0.3 })], [1, A.stand()]]),
-      A.turn(0.3, 2950, -1), A.walk(0.8, 2950, 3130, { step: 0.5 }), A.hold(8.6, 3130, -1, (tl) => A.reach([0.4 + 0.05 * Math.sin(tl * 2), 1.2], null, { gripN: 0.6, head: 0.1 })),   // leak check, logs
-      A.walk(1.0, 3130, 3240, { step: 0.5 }), A.hold(3.0, 3240, 1, (tl) => A.reach([0.45, 1.0], null, { gripN: 0.8, lean: 0.2 }))];   // 24-27: serviced Raptor onto the trolley
-    const rest = [A.walk(1.0, 3240, 3130, { step: 0.5 }), A.hold(6.0, 3130, -1, (tl) => A.reach([0.4 + 0.08 * Math.sin(tl * 3), 0.6], null, { lean: 0.4, hipY: 0.82, gripN: 0.6 })),   // 29-35 clean the stand
-      A.walk(1.0, 3130, 3240, { step: 0.5 }), A.hold(2.0, 3240, 1, (tl) => A.reach([0.45, 1.0], null, { gripN: 0.8 })),   // 36-38 old Raptor off the trolley
-      A.walk(1.0, 3240, 3130, { step: 0.5 }), A.hold(2.0, 3130, -1, () => low), A.hold(5.0, 3130, -1, (tl) => up)];   // 39-41 nozzle off, 41-46 pump swap
-    const all = segs.concat(rest);
-    all.push(A.keyed(48 - A.total(all), 3130, -1, [[0, up], [0.5, A.reach([0.35, 1.25], null, { gripN: 1 })], [1, A.stand()]]));   // injectors in
-    return (t) => A.run(all, s48(t)); })();
+    const carryP = A.reach([0.3, 1.15], [0.4, 1.05], { gripN: 0.9, gripF: 0.9, lean: 0.05 }), pumpP = A.reach([0.1, 1.62], [0.3, 1.2], { gripN: 1, gripF: 0.8, head: -0.15 }),
+      injP = A.reach([0.25, 1.0], [0.55, 2.0], { gripN: 0.8, gripF: 1, head: -0.3 }), pend = (tl) => A.reach([0.4, 1.05 + 0.012 * Math.sin(tl * 8)], [0.3, 0.9], { gripN: 0.9, lean: 0.05, head: -0.15 + 0.12 * Math.sin(tl * 1.5) }),   // thumb jogs the hoist pendant while the head follows the load
+      boxP = A.reach([0.5, 0.42], [0.3, 0.85], { gripN: 1, lean: 0.35, hipY: 0.9 }), recvP = A.reach([0.3, 1.78], [0.54, 1.72], { gripN: 1, gripF: 1, head: -0.2 }),
+      grabP = A.reach([0.1, 1.62], null, { gripN: 1, head: -0.15 }), st0 = A.stand();
+    const wob = (p, tl, a) => Object.assign({}, p, { handN: [p.handN[0] + a * Math.sin(tl * 7), p.handN[1]] });
+    const sg = [
+      A.keyed(0.9, S_, -1, [[0, carryP], [0.7, pumpP], [1, pumpP]]),                                   //  0.0 new pump to the side mount (on the Raptor 0.7)
+      A.keyed(0.9, S_, -1, [[0, pumpP], [0.45, pumpP], [1, injP]]),                                    //  0.9 injector box up to the powerhead (in at 1.7)
+      A.hold(5.2, S_, -1, (tl) => wob(low, tl, 0.03)),                                                  //  1.8 nozzle back on (2.5-6.5)
+      A.hold(3.0, S_, -1, (tl) => wob(up, tl, 0.03)),                                                   //  7.0 torque the powerhead
+      A.hold(10.0, S_, -1, (tl) => A.reach([0.4 + 0.05 * Math.sin(tl * 2), 1.2], null, { gripN: 0.6, head: 0.1 })),   // 10.0 leak check on the bell
+      A.walk(1.5, S_, P_, { step: 0.5 }), A.turn(0.3, P_, -1),                                          // 20.0 to the hoist pendant
+      A.hold(4.1, P_, 1, pend),                                                                  // 21.8-25.9 flies the Raptor to the trolley (hoist keys 21.8-27.8)
+      A.turn(0.3, P_, 1), A.keyed(0.8, P_, -1, [[0, st0], [1, boxP]]),                                  // 25.9 old pump off the tote box (in hand 26.7)
+      A.walk(1.6, P_, T_, { step: 0.5, carry: [0.35, 0.95], carryW: 0.3 }),                             // 27.0 to the basket stop
+      A.keyed(1.0, T_, -1, [[0, carryP], [0.5, A.reach([0.3, 1.9], null, { head: -0.3 })], [1, st0]]),  // 28.6 pump into the basket (gone 29.2)
+      A.turn(0.3, T_, -1), A.walk(2.0, T_, S_, { step: 0.5 }), A.turn(0.3, S_, 1),                      // 29.6 back to the stand
+      A.hold(2.7, S_, -1, (tl) => A.reach([0.5 + 0.12 * Math.sin(tl * 5), 0.2], null, { lean: 0.45, hipY: 0.8, gripN: 0.8 })),   // 32.2 brush the empty pad
+      A.walk(1.2, S_, P_, { step: 0.5 }), A.turn(0.3, P_, -1),                                          // 34.9 to the pendant
+      A.hold(3.2, P_, 1, pend),                                                                  // 36.4-39.6 flies the old Raptor from the trolley to the stand (hoist 35-39.7)
+      A.walk(1.1, P_, S_, { step: 0.5 }), A.turn(0.3, S_, 1),                                           // 39.6
+      A.hold(1.4, S_, -1, (tl) => wob(low, tl, 0.03)),                                                  // 41.0 nozzle off (41.1-42.3)
+      A.keyed(0.8, S_, -1, [[0, low], [0.6, grabP], [1, grabP]]),                                       // 42.4 grip the old pump (in hand 42.8)
+      A.walk(1.4, S_, P_, { step: 0.5, carry: [0.3, 1.0], carryW: 0.3 }),                               // 43.2 carry it to the tote box
+      A.keyed(0.7, P_, -1, [[0, carryP], [0.6, boxP], [1, boxP]]), A.turn(0.3, P_, -1),                 // 44.6 set on the box (45.1), turn to the receiver
+      A.keyed(0.8, P_, 1, [[0, st0], [0.7, recvP], [1, recvP]]),                                        // 45.6 new pump + injector box off the receiver (45.9 / 46.0)
+      A.walk(1.2, P_, S_, { step: 0.5, carry: [0.3, 1.1], carryW: 0.3 }), A.turn(0.3, S_, 1),           // 46.4 carry both to the stand
+      A.hold(0.1, S_, -1, () => carryP)];
+    const base = (t) => A.run(sg, s48(t));
+    return (t) => {
+      const st = base(t), w = ovrW(ovrTg(t)); st.id = 'tech-8D';
+      if (w <= 0) return st;
+      const tg = ovrTg(t), op = RG.blend(SLUMP, st0, TF.smooth(TF.lin(tg, 6.6, 7.6)));
+      return Object.assign(st, { x: TF.lerp(st.x, S_, w), face: w > 0.5 ? -1 : st.face, pose: RG.blend(st.pose, op, w), squash: (st.squash || 0) * (1 - w), walking: st.walking && w < 0.5, ovr: w, tg }); };
+  })();
   TF.room({ id: '8D', period: 48, box: L.roomById('8D').box,
     ports: { D8CD: 'pass', D8DE: 'both', F8R: 'both', H78: 'in' },
     actors: ['8D.engineStand', '8D.crane', '8D.raptorTech'],
@@ -156,27 +198,41 @@
     back(ctx, t, theme, lod) {
       const u = s48(t);
       X.upper(ctx, yF, ceil, t, lod, { tray: [2810, 2900, 3.6], pipes: [3180, 3260, 3.9], valves: [3220], lamps: [2900, 3200] });
-      X.hoist(ctx, RX + (u >= 38 && u < 41 ? 0 : 0), hY(3.6), u >= 37 || u < 6 ? hY(3.0) : hY(3.4), 2850, 3250);
-      D.rect(ctx, RX - 40, yF - 8, 80, 8, '#7b848c');
-      if (u >= 37 || u < 24.5) raptor(ctx, RX, yF - 8, rstate(u), lod);
-      { const rs = rstate(u), tw = TF.elonTour && TF.elonTour.at8D(t);                                                                // Raptor diagnostic pedestal
+      drawHoist(ctx, u, lod, 0, 3280);
+      D.rect(ctx, RX - 42, yF - 8, 108, 8, '#7b848c');
+      if (rWhere(u) === 'stand') raptor(ctx, RX, yF - 8, rstate(u), lod);
+      { const rs = rstate(u), tw = TF.elonTour && TF.elonTour.at8D(t) && ovrTg(t) < 2.6;                                                  // Raptor diagnostic pedestal (reacts at Elon's lever)
         D.rect(ctx, 2975, hY(1.4), 18, 1.4 * M, '#475569', '#1e293b', 1); D.rect(ctx, 2978, hY(1.35), 12, 8, '#0f172a', '#64748b', 1);
         D.rect(ctx, 2979, hY(1.35) + 5, 10 * (rs && rs.pump ? 1 : 0.4), 2, tw ? '#4ade80' : '#38bdf8');
         D.circle(ctx, 2991, hY(1.2), 3, '#0f172a', '#94a3b8', 1); D.line(ctx, [[2991, hY(1.2)], [2991 - (tw ? 9 : 3), hY(1.2) + (tw ? 6 : -8)]], '#e2e8f0', 2); }
-      D.rect(ctx, 3050, hY(1.75), 20, 16, '#dfe4e8', '#7b848c', 1);
-      // new turbopump waits on the receiver until the tech picks it up at 43; scrap tote holds the old one until the basket run
-      if (lod !== 'far' && (u < 43 || u >= 46.5)) D.circle(ctx, 3060, hY(1.75) - 2, 9, '#cbd5e1', '#2b2f34', 1);
-      if (u >= 43 || u < 12.5) { D.rect(ctx, 3010, yF - 14, 22, 14, '#7d5a2c', '#4a3420', 1); if (lod !== 'far' && (u >= 43 || u < 12.5)) D.circle(ctx, 3021, yF - 18, 7, '#78716c', '#2b2f34', 1); }
+      D.rect(ctx, 3048, hY(1.75), 32, 16, '#dfe4e8', '#7b848c', 1);                                                                       // receiver (drone capsule unloads here 42.05-42.45)
+      if (lod !== 'far') {
+        if (u >= 42.45 && u < 45.9) D.circle(ctx, RECP[0], RECP[1], 8, '#cbd5e1', '#2b2f34', 1);                                         // new pump: on the receiver until the hand takes it
+        if (u >= 42.45 && u < 46.0) D.rect(ctx, RECI[0] - 6, RECI[1] - 4, 12, 8, '#ef4444', '#7f1d1d', 0.8);                              // injector box: same
+      }
+      D.rect(ctx, 3010, yF - 14, 22, 14, '#7d5a2c', '#4a3420', 1);                                                                        // scrap tote box: always on the floor
+      if (lod !== 'far' && (u >= 45.1 || u < 26.4)) D.circle(ctx, BOXP[0], BOXP[1], 8, '#78716c', '#2b2f34', 1);                         // old pump rests on it until the tech takes it to the basket
       K.cabinet(ctx, 2820, yF - 46, 18, 46, t, 87, lod);
     },
     draw() {},
     front(ctx, t, theme, lod) {
       if (lod === 'far') return;
-      const u = s48(t), fig = A.draw(ctx, tech(t), yF), w = fig.w(fig.sk.wristN);
-      const pump = (kind, r) => D.circle(ctx, w[0], w[1] + 4, r || 9, kind === 'old' ? '#78716c' : '#cbd5e1', '#2b2f34', 1);
-      if (u >= 41 && u < 43) pump('old');
-      if (u >= 43 && u < 46) pump('new');
-      if (u >= 12.5 && u < 14.3) { D.rect(ctx, w[0] - 11, w[1] - 2, 22, 14, '#7d5a2c', '#4a3420', 1); if (u < 13.8) D.circle(ctx, w[0], w[1] - 6, 7, '#78716c', '#2b2f34', 1); }
+      const u = s48(t), st = tech(t), fig = A.draw(ctx, st, yF), wN = fig.w(fig.sk.wristN), wF = fig.w(fig.sk.wristF), ue = u < 20 ? u + 48 : u, ow = st.ovr || 0;
+      const pump = (kind, p) => D.circle(ctx, p[0], p[1], 8, kind === 'old' ? '#78716c' : '#cbd5e1', '#2b2f34', 1), hand = [wN[0], wN[1] + 4];
+      if (u >= 42.8 && u < 45.1) pump('old', u < 43.2 ? lerp2(SITE, hand, TF.ramp(u, 42.8, 43.2)) : u >= 44.6 ? lerp2(hand, BOXP, TF.ramp(u, 44.6, 45.1)) : hand);   // Raptor -> hand -> tote box
+      if (u >= 26.4 && u < 29.2) pump('old', u < 26.9 ? lerp2(BOXP, hand, TF.ramp(u, 26.4, 26.9)) : hand);                                                  // tote box -> hand -> basket
+      if (ue >= 45.9 && ue < 48.7) pump('new', ue < 46.3 ? lerp2(RECP, hand, TF.ramp(ue, 45.9, 46.3)) : ue >= 48.3 ? lerp2(hand, SITE, TF.ramp(ue, 48.3, 48.7)) : hand);   // receiver -> hand -> Raptor
+      if (ue >= 46.0 && ue < 49.7) { const p = ue < 46.4 ? lerp2(RECI, wF, TF.ramp(ue, 46.0, 46.4)) : ue >= 49.3 ? lerp2(wF, INJ, TF.ramp(ue, 49.3, 49.7)) : wF; D.rect(ctx, p[0] - 6, p[1] - 3, 12, 8, '#ef4444', '#7f1d1d', 0.8); }
+      if (u >= 32.2 && u < 34.9) D.rect(ctx, wN[0] - 6, wN[1] - 1, 12, 4, '#8b6b3d', '#4a3420', 0.8);                                       // pad brush
+      { const h = hoistAt(u), k = (TF.ramp(u, 21.8, 22.3) * (1 - TF.ramp(u, 25.4, 25.9)) + TF.ramp(u, 36.4, 36.9) * (1 - TF.ramp(u, 39.2, 39.6))) * (1 - ow),   // hoist pendant: hangs from the trolley, in the tech's hand while he flies the load
+          e = lerp2([h.x, yF - 1.3 * M], hand, k), s = [h.x, hY(3.7) + 5];
+        D.line(ctx, [s, [(s[0] + e[0]) / 2, (s[1] + e[1]) / 2 + 10], e], '#2b2f34', 1.2); D.rect(ctx, e[0] - 3, e[1] - 1, 6, 11, '#1f2937', '#64748b', 0.8); D.circle(ctx, e[0], e[1] + 3, 1.5, k > 0.5 ? '#4ade80' : '#f59e0b'); }
+      if (ow > 0) {   // downed tech: chest panel, red LED while down, Elon opens the panel and reseats the cable, LED green
+        const tg = st.tg, rise = TF.smooth(TF.lin(tg, 6.6, 7.6)), c = fig.w([0.18, TF.lerp(0.98, 1.3, rise)]), open = TF.pulse(tg, 4.9, 6.9, 0.3), live = tg >= 6.6;
+        D.rect(ctx, c[0] - 5, c[1] - 6, 10, 12, '#1f2937', '#64748b', 0.8);
+        if (open > 0) { D.rect(ctx, c[0] - 4, c[1] - 5, 8, 10, '#0f172a'); D.line(ctx, [[c[0] - 2, c[1] + 2], [c[0] - 6 - 4 * open, c[1] + 8], [c[0] - 12 * open, c[1] + 12]], '#38bdf8', 1.3); }
+        D.circle(ctx, c[0], c[1] - 9, 2.2, live ? '#4ade80' : (Math.floor(t * 4) % 2 ? '#ef4444' : '#7f1d1d'));
+        if (tg > -0.5 && tg < 0.6) K.sparks(ctx, c[0], c[1], t, lod, 0.7); }
     } });
 
   // ================= 8E bridge gate: trolley over the sky-bridge =================
@@ -196,7 +252,8 @@
       D.rect(ctx, 3742, hY(3.0), 16, 3.0 * M * (1 - dOpen) + 2, '#9aa3ab', '#6d757d', 1);
       K.beacon(ctx, 3735, hY(3.2), t, (u < 1) || (u >= 24 && u < 25), '#4ade80');
       D.rect(ctx, tx - 40, yF - 12, 80, 8, '#5f6b77', '#2b2f34', 1); D.circle(ctx, tx - 30, yF - 4, 4, '#1d1f22'); D.circle(ctx, tx + 30, yF - 4, 4, '#1d1f22');
-      if ((u >= 24 && u < 36) || (u >= 36 && u < 37)) { const st = u < 30 ? { nozzle: 1, pump: 'new', inj: true } : { nozzle: 1, pump: 'old', inj: true }; ctx.save(); ctx.beginPath(); ctx.rect(3280, ceil, 1300, 330); ctx.clip(); raptor(ctx, tx, yF - 12, st, lod); ctx.restore(); }
+      if (u >= 25 && u < 37.1) { const st = u < 30.5 ? { nozzle: 1, pump: 'new', inj: true } : { nozzle: 1, pump: 'old', inj: false }; ctx.save(); ctx.beginPath(); ctx.rect(3280, ceil, 1300, 330); ctx.clip(); raptor(ctx, tx, yF - 12, st, lod); ctx.restore(); }   // swap at the ship end while the trolley is parked (30-31)
+      drawHoist(ctx, u, lod, 3280, 4600);
       // food-crate shelf: unloaded from the basket at its stop, picked up by the passing crew-up robot at t%24 = 18.0
       const w = R.foodCrate.window(0, 0), s = s24(t), on = TF.mod(s - TF.mod(w[0] + 0.6, 24), 24) < TF.mod(18.0 - w[0] - 0.6, 24) - 0.02;
       { const go = (u < 1) || (u >= 24 && u < 25) || dOpen > 0.3, pull = TF.elonTour && TF.elonTour.at8E(t);                          // sky-bridge control pedestal
@@ -205,12 +262,12 @@
         D.circle(ctx, 3704, hY(1.35), 3, '#0f172a', '#94a3b8', 1); D.line(ctx, [[3704, hY(1.35)], [3704 + (pull ? 10 : 2), hY(1.35) + (pull ? 9 : -9)]], '#e2e8f0', 2); }
       D.rect(ctx, 3644, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
       D.rect(ctx, 3672, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
-      D.rect(ctx, 3640, hY(1.0), 40, 4, '#9aa3ab'); if (on) IT.foodcrate(ctx, 3660, hY(1.0));
+      D.rect(ctx, 3640, hY(1.0), 40, 4, '#9aa3ab'); if (on && !R.foodCrate.grip(t, 0)) IT.foodcrate(ctx, 3660, hY(1.0));   // drone owns it until it lands
       // tile crate: staging table by the loader arm; arm carries it into the waiting ring (47.8)
       const uDrop = TF.mod(R.tiles.window(0, 0)[0] + 0.6, 48), idle = [3350, hY(1.6)], pick = [3365, hY(1.0)], drop = [3420, yF - 12 - RR + 8];
       D.rect(ctx, 3355, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b'); D.rect(ctx, 3371, hY(1.0) + 4, 4, yF - (hY(1.0) + 4), '#8a939b');
       D.rect(ctx, 3352, hY(1.0), 26, 4, '#9aa3ab');
-      if (u >= uDrop && u < 46.8) IT.crate(ctx, 3365, hY(1.0));
+      if (u >= uDrop && u < 46.8 && !R.tiles.grip(t, 0)) IT.crate(ctx, 3365, hY(1.0));
       const mix = (a, b, k) => [TF.lerp(a[0], b[0], k), TF.lerp(a[1], b[1], k)];
       let tip = idle;
       if (u >= 46 && u < 46.8) tip = mix(idle, pick, TF.ramp(u, 46, 46.8));

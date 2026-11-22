@@ -54,6 +54,12 @@
         bowl(x + 8, '#f5f0dc'); bowl(x + 24, '#b91c1c'); bowl(x + 40, '#fde047');                                   // mash, cranberry, corn
         D.poly(ctx, [[x + 46, y - 3], [x + 56, y - 3], [x + 56, y - 7], [x + 51, y - 9], [x + 46, y - 7]], '#d97706', '#7c2d12', 0.5);   // pie
       },
+      elonMeal(ctx, x, y, k = 1) {   // roast turkey + corn + pie slice; bites vanish as k falls
+        D.rect(ctx, x - 28, y - 3, 56, 3, '#ffffff', '#9aa3ab', 0.6);
+        if (k > 0.5) turkey(ctx, x - 12, y - 3, 1.1);
+        if (k > 0.2) { D.poly(ctx, [[x + 6, y - 3], [x + 18, y - 3], [x + 16, y - 8], [x + 8, y - 8]], '#e5e7eb', '#6b7280', 0.5); D.rect(ctx, x + 8, y - 10, 8, 2.5, '#fde047'); }
+        D.poly(ctx, [[x + 20, y - 3], [x + 27, y - 3], [x + 27, y - 6], [x + 23, y - 8], [x + 20, y - 6]], '#d97706', '#7c2d12', 0.5);
+      },
       feastMain: (ctx, x, y, k) => { if (k > 0.05) turkey(ctx, x, y - 1, 0.8 * (0.4 + 0.6 * k)); },
       tableJumper: (ctx, x, y, pose) => liveTurkey(ctx, x, y - ((pose && pose.peek) || 0), (pose && pose.face) || 1),
       flock: (ctx, x, y, t) => liveTurkey(ctx, x, y - Math.abs(Math.sin(t * 2)) * 1, 1),
