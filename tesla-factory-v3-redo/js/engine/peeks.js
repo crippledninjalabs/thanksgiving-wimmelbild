@@ -87,11 +87,11 @@
     }
     // Peek primes already in use must stay unique; gag primes (FACTORY-MAP §7) may be used by exactly one gag.
     const peekP = TF.peeks.map((p) => p.P);
-    const gagReserved = [53, 61, 67, 71, 89, 127, 193];
+    const gagReserved = [53, 61, 67, 71, 89, 127, 192];
     for (const p of TF.peeks) if (gagReserved.includes(p.P)) problems.push(`peek ${p.id}: period ${p.P} is reserved for a gag`);
     const gagP = {};
     for (const g of TF.gagHooks) {
-      if (!prime(g.P)) problems.push(`gag ${g.id}: period ${g.P} is not prime`);
+      if (!prime(g.P) && g.P !== TF.SCENE) problems.push(`gag ${g.id}: period ${g.P} is not prime (or the scene loop)`);
       if (peekP.includes(g.P)) problems.push(`gag ${g.id}: period ${g.P} is used by a peek`);
       if (gagP[g.P]) problems.push(`gag ${g.id}: period ${g.P} shared with ${gagP[g.P]}`);
       gagP[g.P] = g.id;

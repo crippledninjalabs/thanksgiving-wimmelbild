@@ -55,5 +55,5 @@
 
   // Stage-3 gag hook (BRIEF-STAGE2 rule 7): window-drone mishap -> Rube Goldberg chain -> Optimus assemble a gaming PC
   // in 9E -> Elon sits and plays, fire-red DIABLO sign lit (only other allowed text). Neutral stub until stage 3.
-  TF.gagHook({ id: 'diablo', P: 193, offset: 49, cycles: 6, room: '9E', trigger: 'Elon slides down the SS, works his way up; last cycle he plays at the PC' });
+  TF.gagHook({ id: 'diablo', P: 192, offset: 49, cycles: 5, room: '9E', trigger: 'Elon slides down the SS, works his way up; last cycle he plays at the PC' });   // P=192=4*LOOP so the tour is a scene loop; cycles=5 keeps g(t=0)=143 outside the 24k active window
 })(typeof window !== 'undefined' ? window : globalThis);

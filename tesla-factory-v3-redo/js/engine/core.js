@@ -4,7 +4,8 @@
   const TF = (G.TF = G.TF || {});
   TF.M = 50;                 // world units per metre
   TF.BASE = 24;              // base machine loop (s)
-  TF.LOOP = 48;              // whole-scene seamless loop (heavy items)
+  TF.LOOP = 48;              // machine / item seamless loop (heavy items)
+  TF.SCENE = 192;            // full scene loop (4 × LOOP), including the Elon tour
   TF.LOD = { far: 0.35, near: 0.8 };   // px per world unit thresholds (FACTORY-MAP §9)
 
   // ---------- registries ----------

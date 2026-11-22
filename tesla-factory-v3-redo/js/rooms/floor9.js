@@ -200,7 +200,7 @@
   { const c = L.conById('S89'); if (c) Object.assign(c, { type: 'stair', a: '8E', b: '9E', hole: { x: 3602, y: y9, w: 42, h: L.slab } });
     L.connectors.push({ id: 'SL97', type: 'slide', a: '9E', b: '7E', holes: [y9, y8].map((y) => ({ x: 3488, y, w: 34, h: L.slab })) }); }
   const slidePose = () => { const p = A.stand('elon'); p.hip = [0, 0.42]; p.lean = -0.25; p.head = 0.35; p.handN = [0.35, 0.75]; p.handF = [0.2, 0.8]; p.gripN = 0.5; p.gripF = 0.4; return p; };
-  // ================= Elon's 193 s tour =================
+  // ================= Elon's 192 s tour =================
   // g = mod(t - offset, P). Beats are {d, f(u, tl) -> {x, y, face, pose, ...}}; A.run cross-fades poses at every joint. Stops have fixed lengths;
   // every walk shares ONE speed solved below so the whole tour sums to exactly P (g = 0 and g = P are the same seated pose). All sway uses
   // integer multiples of 2*pi/P, so the idle motion also wraps seamlessly. Windows (WIN) feed at7C/at7E/at8E/at8D/at9C/atMeal/playing.
